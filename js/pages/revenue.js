@@ -306,7 +306,7 @@ export function render(container) {
   // ── Compare Tab ──
 
   function buildCompareCards() {
-    return buildGrandTotalCompareCard() + `<div class="grid grid-4">${CHANNELS.map(ch => buildCompareChannelCard(ch)).join('')}</div>`;
+    return buildGrandTotalCompareCard() + `<div class="grid grid-2">${CHANNELS.map(ch => buildCompareChannelCard(ch)).join('')}</div>`;
   }
 
   function buildGrandTotalCompareCard() {
@@ -362,9 +362,11 @@ export function render(container) {
   }
 
   function buildCompareChannelCard(ch) {
-    const annualActual = sum(REVENUE[ch.key]);
-    const share = getChannelShare();
-    const sharePct = share[ch.key] || 0;
+    const budgetArr = BUDGET.revenueByChannel[ch.key];
+    const actualArr = REVENUE[ch.key];
+    const annualBudget = sum(budgetArr);
+    const annualActual = sum(actualArr);
+    const annualVarPct = annualBudget > 0 ? ((annualActual - annualBudget) / annualBudget) * 100 : 0;
 
     return `
       <div class="card" style="border-left:4px solid ${ch.color}">
@@ -373,26 +375,41 @@ export function render(container) {
             <span style="width:10px;height:10px;border-radius:50%;background:${ch.color};display:inline-block"></span>
             ${ch.label}
           </span>
-          <span style="font-size:.85rem;display:flex;align-items:center;gap:12px">
-            <span>${t('card.annualActual')}: <strong>${formatBahtCompact(annualActual)}</strong></span>
-            <span>${formatPercent(sharePct)} ${t('misc.share')}</span>
+          <span style="font-size:.85rem;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <span>${t('card.target')}: <strong>${formatBahtCompact(annualBudget)}</strong></span>
+            <span>${t('card.actual')}: <strong>${formatBahtCompact(annualActual)}</strong></span>
+            ${annualActual > 0 ? getStatusBadge(annualVarPct) : ''}
           </span>
         </div>
         <div class="data-table-wrapper">
           <table class="data-table data-table-dense">
             <thead><tr>
               <th>${t('th.month')}</th>
+              <th class="text-right">${t('card.target')}</th>
               <th class="text-right">${t('card.actual')}</th>
+              <th class="text-right">${t('th.variance')}</th>
+              <th class="text-center">${t('th.status')}</th>
             </tr></thead>
             <tbody>
-              ${months.map((m, i) => `<tr>
-                <td>${m}</td>
-                <td class="text-right">${REVENUE[ch.key][i] > 0 ? formatBaht(REVENUE[ch.key][i]) : '—'}</td>
-              </tr>`).join('')}
+              ${months.map((m, i) => {
+                const b = budgetArr[i];
+                const a = actualArr[i];
+                const pct = b > 0 ? ((a - b) / b) * 100 : 0;
+                return `<tr>
+                  <td>${m}</td>
+                  <td class="text-right">${formatBaht(b)}</td>
+                  <td class="text-right">${a > 0 ? formatBaht(a) : '—'}</td>
+                  <td class="text-right ${pct > 0 ? 'text-success' : pct < 0 ? 'text-danger' : ''}">${a > 0 ? formatPercentSigned(pct) : '—'}</td>
+                  <td class="text-center">${a > 0 ? getStatusBadge(pct) : `<span class="badge badge-muted">${t('status.pending')}</span>`}</td>
+                </tr>`;
+              }).join('')}
             </tbody>
             <tfoot><tr class="total-row">
               <td><strong>${t('th.total')}</strong></td>
+              <td class="text-right"><strong>${formatBaht(annualBudget)}</strong></td>
               <td class="text-right"><strong>${formatBaht(annualActual)}</strong></td>
+              <td class="text-right ${annualVarPct > 0 ? 'text-success' : annualVarPct < 0 ? 'text-danger' : ''}"><strong>${annualActual > 0 ? formatPercentSigned(annualVarPct) : '—'}</strong></td>
+              <td class="text-center">${annualActual > 0 ? getStatusBadge(annualVarPct) : `<span class="badge badge-muted">${t('status.pending')}</span>`}</td>
             </tr></tfoot>
           </table>
         </div>
