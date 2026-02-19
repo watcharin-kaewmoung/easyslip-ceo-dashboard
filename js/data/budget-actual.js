@@ -19,6 +19,13 @@ const DEFAULT_BUDGET_REVENUE = Object.freeze([
   4822000, 4894000, 4967580, 5191756, 5377055, 5585328,
   5824454, 6140317, 6455419, 6842614, 7290804, 7858939
 ]);
+const DEFAULT_BUDGET_REVENUE_BY_CHANNEL = Object.freeze({
+  bot: Object.freeze([22000, 22000, 22500, 22500, 23000, 23000, 23000, 23500, 23500, 24000, 24000, 24500]),
+  api: Object.freeze([4800000, 4872000, 4945080, 5019256, 5094555, 5170993, 5248558, 5327286, 5407206, 5488314, 5570639, 5654199]),
+  crm: Object.freeze([0, 0, 0, 150000, 199500, 265335, 352896, 469431, 624323, 830350, 1104365, 1468806]),
+  sms: Object.freeze([0, 0, 0, 0, 80000, 126800, 200978, 318550, 504901, 800268, 1268425, 2010434]),
+});
+
 const DEFAULT_BUDGET_COST = Object.freeze([
   1903869, 1922782, 2007009, 2050809, 2505376, 2060437,
   2094721, 2383755, 2547283, 2165180, 2223546, 2884937
@@ -55,6 +62,12 @@ function buildDefaultBudgetDetails() {
 // Mutable budget singleton — v5: per-category cost
 export const BUDGET = {
   revenue: [...DEFAULT_BUDGET_REVENUE],
+  revenueByChannel: {
+    bot: [...DEFAULT_BUDGET_REVENUE_BY_CHANNEL.bot],
+    api: [...DEFAULT_BUDGET_REVENUE_BY_CHANNEL.api],
+    crm: [...DEFAULT_BUDGET_REVENUE_BY_CHANNEL.crm],
+    sms: [...DEFAULT_BUDGET_REVENUE_BY_CHANNEL.sms],
+  },
   cost: {
     system_cost: [...DEFAULT_BUDGET_COST_BY_CAT.system_cost],
     salary:      [...DEFAULT_BUDGET_COST_BY_CAT.salary],
@@ -73,7 +86,15 @@ export const BUDGET = {
 
 const BUDGET_KEY = 'budget_targets_2026';
 
+/** Recompute BUDGET.revenue[i] from per-channel sums */
+export function recalcBudgetRevenue() {
+  for (let i = 0; i < 12; i++) {
+    BUDGET.revenue[i] = PRODUCT_KEYS.reduce((s, k) => s + (BUDGET.revenueByChannel[k]?.[i] || 0), 0);
+  }
+}
+
 export function recalcBudget() {
+  recalcBudgetRevenue();
   BUDGET.annualRevenue = BUDGET.revenue.reduce((a, b) => a + b, 0);
   const keys = getCostKeys();
   BUDGET.costTotal = new Array(12).fill(0);
@@ -106,9 +127,12 @@ export function saveBudget() {
       }
     }
   }
+  const revByChannel = {};
+  for (const k of PRODUCT_KEYS) revByChannel[k] = [...BUDGET.revenueByChannel[k]];
   storage.set(BUDGET_KEY, {
-    version: 3,
+    version: 4,
     revenue: [...BUDGET.revenue],
+    revenueByChannel: revByChannel,
     cost: costObj,
     costDetails: costDetailsObj,
     lastUpdated: new Date().toISOString(),
@@ -137,15 +161,30 @@ export function loadBudget() {
   const saved = storage.get(BUDGET_KEY);
   if (!saved) return false;
 
-  // v3: per-category cost + costDetails
-  if (saved.version === 3 && saved.cost?.system_cost?.length === 12) {
+  // v4 or v3: per-category cost + costDetails (+ optional revenueByChannel)
+  if ((saved.version === 4 || saved.version === 3) && saved.cost?.system_cost?.length === 12) {
     for (const k of getCostKeys()) {
       if (saved.cost[k]?.length === 12) {
         for (let i = 0; i < 12; i++) BUDGET.cost[k][i] = Number(saved.cost[k][i]) || 0;
       }
     }
-    if (saved.revenue?.length === 12) {
-      for (let i = 0; i < 12; i++) BUDGET.revenue[i] = Number(saved.revenue[i]) || 0;
+    // Load per-channel revenue budget (v4) or migrate from total (v3)
+    if (saved.revenueByChannel) {
+      for (const k of PRODUCT_KEYS) {
+        if (saved.revenueByChannel[k]?.length === 12) {
+          for (let i = 0; i < 12; i++) BUDGET.revenueByChannel[k][i] = Number(saved.revenueByChannel[k][i]) || 0;
+        }
+      }
+    } else if (saved.revenue?.length === 12) {
+      // v3 migration: distribute saved total proportionally
+      for (let i = 0; i < 12; i++) {
+        const savedTotal = Number(saved.revenue[i]) || 0;
+        const defTotal = DEFAULT_BUDGET_REVENUE[i];
+        for (const k of PRODUCT_KEYS) {
+          const defCh = DEFAULT_BUDGET_REVENUE_BY_CHANNEL[k][i];
+          BUDGET.revenueByChannel[k][i] = defTotal > 0 ? Math.round(savedTotal * defCh / defTotal) : 0;
+        }
+      }
     }
     // Load costDetails
     if (saved.costDetails) {
@@ -215,7 +254,9 @@ export function resetBudget() {
       }
     }
   }
-  BUDGET.revenue.fill(0);
+  for (const k of PRODUCT_KEYS) {
+    if (BUDGET.revenueByChannel[k]) BUDGET.revenueByChannel[k].fill(0);
+  }
   recalcBudget();
   storage.remove(BUDGET_KEY);
 }

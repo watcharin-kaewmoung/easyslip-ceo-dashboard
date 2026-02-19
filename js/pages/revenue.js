@@ -5,7 +5,7 @@
 // ============================================
 
 import { REVENUE, getQuarterlyRevenue, getMoMGrowth, getChannelShare, recalcRevenue, saveRevenue, resetRevenue, getLastSavedRevenue } from '../data/revenue.js';
-import { BUDGET, saveBudget, getLastSavedBudget } from '../data/budget-actual.js';
+import { BUDGET, saveBudget, recalcBudgetRevenue, getLastSavedBudget } from '../data/budget-actual.js';
 import { QUARTERS, CHANNEL_LIST } from '../data/constants.js';
 import { createChart, updateChart, destroyAllCharts } from '../components/charts.js';
 import { showToast } from '../components/toast.js';
@@ -47,17 +47,23 @@ export function render(container) {
 
   function snapshotAll() {
     const rev = {};
-    for (const ch of ['bot', 'api', 'crm', 'sms']) rev[ch] = [...REVENUE[ch]];
-    const budget = [...BUDGET.revenue];
-    return { rev, budget };
+    const budgetCh = {};
+    for (const ch of ['bot', 'api', 'crm', 'sms']) {
+      rev[ch] = [...REVENUE[ch]];
+      budgetCh[ch] = [...BUDGET.revenueByChannel[ch]];
+    }
+    return { rev, budgetCh };
   }
 
   function restoreSnapshot(snap) {
     for (const ch of ['bot', 'api', 'crm', 'sms']) {
-      for (let i = 0; i < 12; i++) REVENUE[ch][i] = snap.rev[ch][i];
+      for (let i = 0; i < 12; i++) {
+        REVENUE[ch][i] = snap.rev[ch][i];
+        BUDGET.revenueByChannel[ch][i] = snap.budgetCh[ch][i];
+      }
     }
-    for (let i = 0; i < 12; i++) BUDGET.revenue[i] = snap.budget[i];
     recalcRevenue();
+    recalcBudgetRevenue();
   }
 
   // ── Auto-save ──
@@ -194,7 +200,7 @@ export function render(container) {
 
   function buildTabContent() {
     switch (activeMainTab) {
-      case 'budget': return buildBudgetCard();
+      case 'budget': return buildBudgetCards();
       case 'revenue': return buildRevenueCards();
       case 'compare': return buildCompareCards();
       case 'charts': return buildChartsTab();
@@ -202,19 +208,23 @@ export function render(container) {
     }
   }
 
-  // ── Budget Tab: Revenue Target Card ──
+  // ── Budget Tab: Per-channel Target Cards ──
 
-  function buildBudgetCard() {
-    const budgetTotal = sum(BUDGET.revenue);
+  function buildBudgetCards() {
+    return `<div class="grid grid-4">${CHANNELS.map(ch => buildBudgetChannelCard(ch)).join('')}</div>`;
+  }
+
+  function buildBudgetChannelCard(ch) {
+    const annual = sum(BUDGET.revenueByChannel[ch.key]);
 
     return `
-      <div class="card" style="margin-bottom:16px;border-left:4px solid var(--color-primary, #6366f1)">
+      <div class="card" style="border-left:4px solid ${ch.color}">
         <div class="card-header" style="padding-bottom:12px">
           <span class="card-title" style="display:flex;align-items:center;gap:8px">
-            <span style="width:10px;height:10px;border-radius:50%;background:var(--color-primary, #6366f1);display:inline-block"></span>
-            ${t('revenue.annualTotal')}
+            <span style="width:10px;height:10px;border-radius:50%;background:${ch.color};display:inline-block"></span>
+            ${ch.label}
           </span>
-          <span style="font-size:.85rem;color:var(--text-muted)">${t('card.annualBudget')}: <strong>${formatBahtCompact(budgetTotal)}</strong></span>
+          <span style="font-size:.85rem;color:var(--text-muted)">${t('card.annualBudget')}: <strong>${formatBahtCompact(annual)}</strong></span>
         </div>
         <div class="data-table-wrapper">
           <table class="data-table data-table-dense">
@@ -227,14 +237,14 @@ export function render(container) {
                 <td>${m}</td>
                 <td class="text-right">
                   <input type="text" inputmode="numeric" class="ba-input"
-                         data-input-type="budget" data-month="${i}"
-                         value="${formatInputDisplay(BUDGET.revenue[i])}" placeholder="0">
+                         data-input-type="budget" data-channel="${ch.key}" data-month="${i}"
+                         value="${formatInputDisplay(BUDGET.revenueByChannel[ch.key][i])}" placeholder="0">
                 </td>
               </tr>`).join('')}
             </tbody>
             <tfoot><tr class="total-row">
               <td><strong>${t('th.total')}</strong></td>
-              <td class="text-right" data-card-cat-total="budget-revenue"><strong>${formatBaht(budgetTotal)}</strong></td>
+              <td class="text-right" data-card-cat-total="budget-${ch.key}"><strong>${formatBaht(annual)}</strong></td>
             </tr></tfoot>
           </table>
         </div>
@@ -567,9 +577,11 @@ export function render(container) {
           break;
         }
         case 'budget': {
-          BUDGET.revenue[month] = val;
-          const totalEl = container.querySelector(`[data-card-cat-total="budget-revenue"]`);
-          if (totalEl) totalEl.innerHTML = `<strong>${formatBaht(sum(BUDGET.revenue))}</strong>`;
+          const channel = input.dataset.channel;
+          BUDGET.revenueByChannel[channel][month] = val;
+          recalcBudgetRevenue();
+          const totalEl = container.querySelector(`[data-card-cat-total="budget-${channel}"]`);
+          if (totalEl) totalEl.innerHTML = `<strong>${formatBaht(sum(BUDGET.revenueByChannel[channel]))}</strong>`;
           break;
         }
       }
@@ -594,7 +606,7 @@ export function render(container) {
       let val = 0;
       switch (type) {
         case 'revenue': val = REVENUE[input.dataset.channel]?.[month] ?? 0; break;
-        case 'budget': val = BUDGET.revenue[month] ?? 0; break;
+        case 'budget': val = BUDGET.revenueByChannel[input.dataset.channel]?.[month] ?? 0; break;
       }
       input.value = formatInputDisplay(val);
 
