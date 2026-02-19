@@ -244,7 +244,7 @@ export function render(container) {
   // ── Revenue Tab: Channel Cards ──
 
   function buildRevenueCards() {
-    return `<div class="grid grid-2">${CHANNELS.map(ch => buildRevenueChannelCard(ch)).join('')}</div>`;
+    return `<div class="grid grid-4">${CHANNELS.map(ch => buildRevenueChannelCard(ch)).join('')}</div>`;
   }
 
   function buildRevenueChannelCard(ch) {
@@ -296,7 +296,7 @@ export function render(container) {
   // ── Compare Tab ──
 
   function buildCompareCards() {
-    return buildGrandTotalCompareCard() + `<div class="grid grid-2">${CHANNELS.map(ch => buildCompareChannelCard(ch)).join('')}</div>`;
+    return buildGrandTotalCompareCard() + `<div class="grid grid-4">${CHANNELS.map(ch => buildCompareChannelCard(ch)).join('')}</div>`;
   }
 
   function buildGrandTotalCompareCard() {
