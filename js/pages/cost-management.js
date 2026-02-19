@@ -270,6 +270,7 @@ export function render(container) {
       tc.innerHTML = buildTabContent();
       if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [tc] });
       if (tab === 'charts') initCharts();
+      if (tab === 'compare') initCompareCharts();
     }
   }
 
@@ -481,110 +482,269 @@ export function render(container) {
   // ── Compare Tab ──
 
   function buildCompareCards() {
-    return buildGrandTotalCompareCard() + COST_CATS.map(cat => buildCompareCategoryCard(cat)).join('');
+    const actualTotal = sum(TOTAL_MONTHLY_COST);
+    const hasAnyData = actualTotal > 0;
+
+    // Empty state: no actual data at all
+    if (!hasAnyData) return buildCompareEmptyState();
+
+    // Section 1: Category Overview Tiles
+    let html = `<h3 class="section-title">${t('compare.categoryOverview')}</h3>`;
+    html += `<div class="grid grid-3" style="margin-bottom:24px">${COST_CATS.map(cat => buildCompareTile(cat)).join('')}</div>`;
+
+    // Section 2: Variance Heatmap
+    html += `<h3 class="section-title">${t('compare.varianceHeatmap')}</h3>`;
+    html += `
+      <div class="card" style="margin-bottom:24px">
+        <div class="card-header" style="padding-bottom:8px">
+          <span class="card-title">${t('compare.heatmapTitle')}</span>
+          <div style="display:flex;gap:12px;font-size:.6rem;color:var(--text-muted)">
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#22c55e;margin-right:3px;vertical-align:middle"></span>${t('compare.underBudget')}</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#eab308;margin-right:3px;vertical-align:middle"></span>${t('compare.nearTarget')}</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#ef4444;margin-right:3px;vertical-align:middle"></span>${t('compare.overBudget')}</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(148,163,184,.15);margin-right:3px;vertical-align:middle"></span>${t('compare.noData')}</span>
+          </div>
+        </div>
+        <div id="cm-compare-heatmap" class="chart-container" style="min-height:260px"></div>
+      </div>`;
+
+    // Section 3: Collapsible Accordions
+    html += `<h3 class="section-title">${t('compare.detailedBreakdown')}</h3>`;
+    html += buildCompareAccordion('total', t('summary.allCategories'), 'var(--color-accent, #6366f1)', BUDGET.costTotal, TOTAL_MONTHLY_COST);
+    html += COST_CATS.map(cat => buildCompareAccordion(cat.key, t('cat.' + cat.key + '.full'), cat.color, BUDGET.cost[cat.key], EXPENSES[cat.key])).join('');
+
+    return html;
   }
 
-  function buildGrandTotalCompareCard() {
-    const costTotalVar = getVariance(BUDGET.costTotal, TOTAL_MONTHLY_COST);
-    const budgetTotal = BUDGET.annualCost;
-    const actualTotal = sum(TOTAL_MONTHLY_COST);
-    const varPct = budgetTotal > 0 ? ((actualTotal - budgetTotal) / budgetTotal) * 100 : 0;
+  // ── Empty State ──
+
+  function buildCompareEmptyState() {
+    return `
+      <div class="card" style="text-align:center;padding:48px 24px;margin:24px 0">
+        <div style="margin-bottom:16px">
+          <i data-lucide="bar-chart-3" style="width:48px;height:48px;color:var(--text-muted);opacity:0.4"></i>
+        </div>
+        <div style="font-size:1rem;font-weight:600;margin-bottom:8px;color:var(--text-primary)">${t('compare.noDataYet')}</div>
+        <div style="font-size:.8rem;color:var(--text-muted);margin-bottom:20px;max-width:420px;margin-left:auto;margin-right:auto">${t('compare.noDataHint')}</div>
+        <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:24px">
+          ${COST_CATS.map(cat => `
+            <div style="text-align:center;padding:10px 14px;background:var(--bg-base);border-radius:var(--radius-md);border:1px solid var(--border-default);min-width:110px">
+              <div style="display:flex;align-items:center;justify-content:center;gap:4px;margin-bottom:4px">
+                <span style="width:6px;height:6px;border-radius:50%;background:${cat.color};display:inline-block"></span>
+                <span style="font-size:.6rem;color:var(--text-muted);text-transform:uppercase">${getCostCatLabel(cat)}</span>
+              </div>
+              <div style="font-size:.85rem;font-weight:700">${formatBahtCompact(sum(BUDGET.cost[cat.key]))}</div>
+              <div style="font-size:.55rem;color:var(--text-muted)">${t('compare.annualTarget')}</div>
+            </div>
+          `).join('')}
+        </div>
+        <button class="btn btn-primary btn-sm" data-main-tab="actual">
+          <i data-lucide="pencil" style="width:14px;height:14px"></i> ${t('compare.goToActual')}
+        </button>
+      </div>`;
+  }
+
+  // ── Compare Tile (Section 1) ──
+
+  function buildCompareTile(cat) {
+    const annualBudget = sum(BUDGET.cost[cat.key]);
+    const annualActual = sum(EXPENSES[cat.key]);
+    const spendPct = annualBudget > 0 ? (annualActual / annualBudget) * 100 : 0;
+    const varPct = annualBudget > 0 ? ((annualActual - annualBudget) / annualBudget) * 100 : 0;
+    const varColor = varPct <= 0 ? 'var(--color-success, #22c55e)' : varPct <= 15 ? 'var(--color-warning, #f59e0b)' : 'var(--color-danger, #ef4444)';
+    const hasData = annualActual > 0;
 
     return `
-      <div class="card" style="margin-bottom:24px;border-left:4px solid var(--color-primary, #6366f1);background:var(--bg-base)">
-        <div class="card-header" style="padding-bottom:12px">
-          <span class="card-title" style="font-size:1rem">${t('summary.allCategories')}</span>
-          <span style="font-size:.85rem;display:flex;align-items:center;gap:12px">
-            <span>${t('card.target')}: <strong>${formatBahtCompact(budgetTotal)}</strong></span>
-            <span>${t('card.actual')}: <strong>${formatBahtCompact(actualTotal)}</strong></span>
-            ${actualTotal > 0 ? getStatusBadge(varPct) : ''}
-          </span>
-        </div>
-        <div class="data-table-wrapper">
-          <table class="data-table data-table-dense">
-            <thead><tr>
-              <th>${t('th.month')}</th>
-              <th class="text-right">${t('card.target')}</th>
-              <th class="text-right">${t('card.actual')}</th>
-              <th class="text-right">${t('th.variance')}</th>
-              <th class="text-center">${t('th.status')}</th>
-            </tr></thead>
-            <tbody>
-              ${months.map((m, i) => {
-                const v = costTotalVar[i];
-                return `<tr>
-                  <td>${m}</td>
-                  <td class="text-right">${formatBaht(BUDGET.costTotal[i])}</td>
-                  <td class="text-right">${TOTAL_MONTHLY_COST[i] > 0 ? formatBaht(TOTAL_MONTHLY_COST[i]) : '—'}</td>
-                  <td class="text-right ${v.pct < 0 ? 'text-success' : v.pct > 0 ? 'text-danger' : ''}">${TOTAL_MONTHLY_COST[i] > 0 ? formatPercentSigned(v.pct) : '—'}</td>
-                  <td class="text-center">${TOTAL_MONTHLY_COST[i] > 0 ? getStatusBadge(v.pct) : `<span class="badge badge-muted">${t('status.pending')}</span>`}</td>
-                </tr>`;
-              }).join('')}
-            </tbody>
-            <tfoot><tr class="total-row">
-              <td><strong>${t('th.total')}</strong></td>
-              <td class="text-right"><strong>${formatBaht(budgetTotal)}</strong></td>
-              <td class="text-right"><strong>${formatBaht(actualTotal)}</strong></td>
-              <td class="text-right ${varPct < 0 ? 'text-success' : varPct > 0 ? 'text-danger' : ''}"><strong>${actualTotal > 0 ? formatPercentSigned(varPct) : '—'}</strong></td>
-              <td class="text-center">${actualTotal > 0 ? getStatusBadge(varPct) : `<span class="badge badge-muted">${t('status.pending')}</span>`}</td>
-            </tr></tfoot>
-          </table>
+      <div class="card" style="border-left:4px solid ${cat.color};padding:14px 16px">
+        <div style="display:flex;align-items:flex-start;gap:12px">
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+              <span style="width:8px;height:8px;border-radius:50%;background:${cat.color};display:inline-block;flex-shrink:0"></span>
+              <span style="font-size:.7rem;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.04em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${getCostCatLabel(cat)}</span>
+            </div>
+            <div style="font-size:.65rem;color:var(--text-muted);margin-bottom:2px">${t('card.target')}: <strong>${formatBahtCompact(annualBudget)}</strong></div>
+            <div style="font-size:.65rem;color:var(--text-muted);margin-bottom:6px">${t('card.actual')}: <strong>${hasData ? formatBahtCompact(annualActual) : '—'}</strong></div>
+            ${hasData ? `
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="font-size:.8rem;font-weight:700;color:${varColor}">${formatPercentSigned(varPct)}</span>
+                ${getStatusBadge(varPct)}
+              </div>
+            ` : `<span class="badge badge-muted" style="font-size:.6rem">${t('status.pending')}</span>`}
+          </div>
+          <div id="cm-gauge-${cat.key}" style="width:76px;height:76px;flex-shrink:0"></div>
         </div>
       </div>`;
   }
 
-  function buildCompareCategoryCard(cat) {
-    const budgetArr = BUDGET.cost[cat.key];
-    const actualArr = EXPENSES[cat.key];
+  // ── Compare Accordion (Section 3) ──
+
+  function buildCompareAccordion(key, label, color, budgetArr, actualArr) {
     const annualBudget = sum(budgetArr);
     const annualActual = sum(actualArr);
+    const varPct = annualBudget > 0 ? ((annualActual - annualBudget) / annualBudget) * 100 : 0;
+    const varColor = varPct <= 0 ? 'var(--color-success, #22c55e)' : varPct <= 15 ? 'var(--color-warning, #f59e0b)' : 'var(--color-danger, #ef4444)';
+    const hasData = annualActual > 0;
     const catVar = getVariance(budgetArr, actualArr);
-    const annualVarPct = annualBudget > 0 ? ((annualActual - annualBudget) / annualBudget) * 100 : 0;
+
+    // Count months with data
+    const dataMonths = actualArr.filter(v => v > 0).length;
+    const pendingMonths = 12 - dataMonths;
 
     return `
-      <div class="card" style="margin-bottom:16px;border-left:4px solid ${cat.color}">
-        <div class="card-header" style="padding-bottom:12px">
-          <span class="card-title" style="display:flex;align-items:center;gap:8px">
-            <span style="width:10px;height:10px;border-radius:50%;background:${cat.color};display:inline-block"></span>
-            ${t('cat.' + cat.key + '.full')}
+      <div class="collapsible-section collapsed">
+        <div class="collapsible-header" style="border-left:4px solid ${color}">
+          <i data-lucide="chevron-down" class="chevron"></i>
+          <span class="section-title" style="margin-bottom:0;display:flex;align-items:center;gap:6px">
+            ${key !== 'total' ? `<span style="width:8px;height:8px;border-radius:50%;background:${color};display:inline-block"></span>` : ''}
+            ${label}
           </span>
-          <span style="font-size:.85rem;display:flex;align-items:center;gap:12px">
+          <span class="section-badge" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             <span>${t('card.target')}: <strong>${formatBahtCompact(annualBudget)}</strong></span>
-            <span>${t('card.actual')}: <strong>${formatBahtCompact(annualActual)}</strong></span>
-            ${annualActual > 0 ? getStatusBadge(annualVarPct) : ''}
+            <span>${t('card.actual')}: <strong>${hasData ? formatBahtCompact(annualActual) : '—'}</strong></span>
+            ${hasData
+              ? `<span style="font-weight:700;color:${varColor}">${formatPercentSigned(varPct)}</span>${getStatusBadge(varPct)}`
+              : `<span class="badge badge-muted">${t('status.pending')}</span>`}
           </span>
         </div>
-        <div class="data-table-wrapper">
-          <table class="data-table data-table-dense">
-            <thead><tr>
-              <th>${t('th.month')}</th>
-              <th class="text-right">${t('card.target')}</th>
-              <th class="text-right">${t('card.actual')}</th>
-              <th class="text-right">${t('th.variance')}</th>
-              <th class="text-center">${t('th.status')}</th>
-            </tr></thead>
-            <tbody>
-              ${months.map((m, i) => {
-                const v = catVar[i];
-                return `<tr>
-                  <td>${m}</td>
-                  <td class="text-right">${formatBaht(budgetArr[i])}</td>
-                  <td class="text-right">${actualArr[i] > 0 ? formatBaht(actualArr[i]) : '—'}</td>
-                  <td class="text-right ${v.pct < 0 ? 'text-success' : v.pct > 0 ? 'text-danger' : ''}">${actualArr[i] > 0 ? formatPercentSigned(v.pct) : '—'}</td>
-                  <td class="text-center">${actualArr[i] > 0 ? getStatusBadge(v.pct) : `<span class="badge badge-muted">${t('status.pending')}</span>`}</td>
-                </tr>`;
-              }).join('')}
-            </tbody>
-            <tfoot><tr class="total-row">
-              <td><strong>${t('th.total')}</strong></td>
-              <td class="text-right"><strong>${formatBaht(annualBudget)}</strong></td>
-              <td class="text-right"><strong>${formatBaht(annualActual)}</strong></td>
-              <td class="text-right ${annualVarPct < 0 ? 'text-success' : annualVarPct > 0 ? 'text-danger' : ''}"><strong>${annualActual > 0 ? formatPercentSigned(annualVarPct) : '—'}</strong></td>
-              <td class="text-center">${annualActual > 0 ? getStatusBadge(annualVarPct) : `<span class="badge badge-muted">${t('status.pending')}</span>`}</td>
-            </tr></tfoot>
-          </table>
+        <div class="collapsible-body">
+          <div class="data-table-wrapper">
+            <table class="data-table data-table-dense">
+              <thead><tr>
+                <th>${t('th.month')}</th>
+                <th class="text-right">${t('card.target')}</th>
+                <th class="text-right">${t('card.actual')}</th>
+                <th style="width:90px"></th>
+                <th class="text-right">${t('th.variance')}</th>
+                <th class="text-center">${t('th.status')}</th>
+              </tr></thead>
+              <tbody>
+                ${months.map((m, i) => {
+                  const v = catVar[i];
+                  const hasMonthData = actualArr[i] > 0;
+                  const fillPct = budgetArr[i] > 0 ? Math.min(actualArr[i] / budgetArr[i] * 100, 150) : 0;
+                  const overBudget = actualArr[i] > budgetArr[i];
+                  return `<tr>
+                    <td>${m}</td>
+                    <td class="text-right">${formatBaht(budgetArr[i])}</td>
+                    <td class="text-right">${hasMonthData ? formatBaht(actualArr[i]) : '—'}</td>
+                    <td>${hasMonthData ? `<div class="progress-bar" style="height:6px"><div class="progress-fill${overBudget ? ' danger' : ''}" style="width:${Math.min(fillPct, 100)}%"></div></div>` : ''}</td>
+                    <td class="text-right ${v.pct < 0 ? 'text-success' : v.pct > 0 ? 'text-danger' : ''}">${hasMonthData ? formatPercentSigned(v.pct) : '—'}</td>
+                    <td class="text-center">${hasMonthData ? getStatusBadge(v.pct) : `<span class="badge badge-muted" style="font-size:.55rem">${t('status.pending')}</span>`}</td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+              <tfoot><tr class="total-row">
+                <td><strong>${t('th.total')}</strong></td>
+                <td class="text-right"><strong>${formatBaht(annualBudget)}</strong></td>
+                <td class="text-right"><strong>${hasData ? formatBaht(annualActual) : '—'}</strong></td>
+                <td>${hasData ? `<div class="progress-bar" style="height:6px"><div class="progress-fill${annualActual > annualBudget ? ' danger' : ''}" style="width:${Math.min(annualActual / annualBudget * 100, 100)}%"></div></div>` : ''}</td>
+                <td class="text-right ${varPct < 0 ? 'text-success' : varPct > 0 ? 'text-danger' : ''}"><strong>${hasData ? formatPercentSigned(varPct) : '—'}</strong></td>
+                <td class="text-center">${hasData ? getStatusBadge(varPct) : `<span class="badge badge-muted">${t('status.pending')}</span>`}</td>
+              </tr></tfoot>
+            </table>
+          </div>
         </div>
       </div>`;
+  }
+
+  // ── Compare Charts (Gauges + Heatmap) ──
+
+  function initCompareCharts() {
+    // Radial gauges for each category
+    for (const cat of COST_CATS) {
+      const annualBudget = sum(BUDGET.cost[cat.key]);
+      const annualActual = sum(EXPENSES[cat.key]);
+      const spendPct = annualBudget > 0 ? Math.round((annualActual / annualBudget) * 100) : 0;
+      const varPct = annualBudget > 0 ? ((annualActual - annualBudget) / annualBudget) * 100 : 0;
+      const gaugeColor = annualActual === 0 ? '#475569' : varPct <= 0 ? '#22c55e' : varPct <= 15 ? '#eab308' : '#ef4444';
+
+      createChart(`cm-gauge-${cat.key}`, {
+        chart: { type: 'radialBar', height: 76, sparkline: { enabled: true } },
+        series: [Math.min(spendPct, 100)],
+        plotOptions: {
+          radialBar: {
+            hollow: { size: '50%' },
+            dataLabels: {
+              name: { show: false },
+              value: {
+                show: true, fontSize: '11px', fontWeight: 700, color: gaugeColor, offsetY: 4,
+                formatter: () => annualActual > 0 ? `${spendPct}%` : '—',
+              },
+            },
+            track: { background: 'rgba(148,163,184,.1)' },
+          },
+        },
+        colors: [gaugeColor],
+      });
+    }
+
+    // Heatmap
+    const heatmapSeries = [...COST_CATS].reverse().map(cat => {
+      const budgetArr = BUDGET.cost[cat.key];
+      const actualArr = EXPENSES[cat.key];
+      const catVar = getVariance(budgetArr, actualArr);
+      return {
+        name: getCostCatLabel(cat),
+        data: months.map((m, i) => ({
+          x: m,
+          y: actualArr[i] > 0 ? Math.round(catVar[i].pct) : null,
+        })),
+      };
+    });
+
+    createChart('cm-compare-heatmap', {
+      chart: { type: 'heatmap', height: 260, toolbar: { show: false } },
+      series: heatmapSeries,
+      plotOptions: {
+        heatmap: {
+          radius: 4,
+          enableShades: false,
+          colorScale: {
+            ranges: [
+              { from: -100, to: -15, color: '#16a34a', name: t('compare.underBudget') },
+              { from: -15, to: -5, color: '#22c55e', name: t('compare.underBudget') },
+              { from: -5, to: 5, color: '#eab308', name: t('compare.nearTarget') },
+              { from: 5, to: 15, color: '#f97316', name: t('compare.overBudget') },
+              { from: 15, to: 200, color: '#ef4444', name: t('compare.overBudget') },
+            ],
+          },
+        },
+      },
+      dataLabels: {
+        enabled: true,
+        style: { fontSize: '9px', fontWeight: 600, colors: ['#f1f5f9'] },
+        formatter: (val) => val != null ? `${val > 0 ? '+' : ''}${val}%` : '',
+      },
+      tooltip: {
+        custom: ({ seriesIndex, dataPointIndex, w }) => {
+          const catName = w.config.series[seriesIndex].name;
+          const monthName = months[dataPointIndex];
+          const val = w.config.series[seriesIndex].data[dataPointIndex].y;
+          const catIdx = COST_CATS.length - 1 - seriesIndex;
+          const cat = COST_CATS[catIdx];
+          const budget = BUDGET.cost[cat.key][dataPointIndex];
+          const actual = EXPENSES[cat.key][dataPointIndex];
+          if (val === null) {
+            return `<div style="padding:8px 12px;font-size:.75rem;background:var(--bg-surface);border:1px solid var(--border-default);border-radius:6px">
+              <strong>${catName}</strong> — ${monthName}<br>
+              <span style="color:var(--text-muted)">${t('card.target')}: ${formatBaht(budget)}</span><br>
+              <em style="color:var(--text-muted)">${t('compare.noData')}</em>
+            </div>`;
+          }
+          const vColor = val <= 0 ? '#22c55e' : val <= 15 ? '#eab308' : '#ef4444';
+          return `<div style="padding:8px 12px;font-size:.75rem;background:var(--bg-surface);border:1px solid var(--border-default);border-radius:6px">
+            <strong>${catName}</strong> — ${monthName}<br>
+            ${t('card.target')}: ${formatBaht(budget)}<br>
+            ${t('card.actual')}: ${formatBaht(actual)}<br>
+            ${t('th.variance')}: <strong style="color:${vColor}">${val > 0 ? '+' : ''}${val}%</strong>
+          </div>`;
+        },
+      },
+      xaxis: { position: 'top' },
+      yaxis: { labels: { style: { fontSize: '10px' } } },
+      stroke: { width: 2, colors: ['var(--bg-surface, #1e293b)'] },
+      legend: { show: false },
+    });
   }
 
   // ── Charts Tab ──
@@ -914,6 +1074,14 @@ export function render(container) {
       const btn = e.target.closest('[data-manage-sub]');
       if (btn) openSubItemManager(btn.dataset.manageSub);
     });
+
+    // Collapsible accordion toggle
+    tabContent.addEventListener('click', (e) => {
+      const header = e.target.closest('.collapsible-header');
+      if (!header) return;
+      const section = header.closest('.collapsible-section');
+      if (section) section.classList.toggle('collapsed');
+    });
   }
 
   function updateCardTotals(mode, catKey) {
@@ -1084,6 +1252,7 @@ export function render(container) {
 
     if (typeof lucide !== 'undefined') lucide.createIcons();
     if (activeMainTab === 'charts') initCharts();
+    if (activeMainTab === 'compare') initCompareCharts();
 
     bindInputHandlers();
     bindActionButtons();
