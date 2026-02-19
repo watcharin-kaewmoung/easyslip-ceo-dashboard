@@ -5,6 +5,7 @@
 import { registerRoute, initRouter } from './router.js';
 import { initSidebar, refreshSidebar } from './components/sidebar.js';
 import { toggleLang, updateLangToggle } from './i18n.js';
+import { sheetsSync } from './sheets-sync.js';
 
 // ── Register all routes ──
 registerRoute('/', () => import('./pages/overview.js'));
@@ -144,8 +145,53 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   updateLangToggle();
 
+  // Sheets sync button
+  initSyncButton();
+
   // Re-create icons (including theme toggle icons)
   if (typeof lucide !== 'undefined') lucide.createIcons();
 
   console.log('EasySlip CEO Dashboard initialized');
 });
+
+// ── Sheets Sync UI ──
+
+function initSyncButton() {
+  const btn = document.getElementById('sync-btn');
+  if (!btn) return;
+
+  // Update icon based on sync config
+  updateSyncIcon();
+
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    await sheetsSync.sync();
+    btn.disabled = false;
+    updateSyncIcon();
+  });
+
+  // Long-press to reconfigure URL
+  let pressTimer;
+  btn.addEventListener('pointerdown', () => {
+    pressTimer = setTimeout(() => {
+      sheetsSync.configure();
+      updateSyncIcon();
+    }, 800);
+  });
+  btn.addEventListener('pointerup', () => clearTimeout(pressTimer));
+  btn.addEventListener('pointerleave', () => clearTimeout(pressTimer));
+
+  // Status listener
+  sheetsSync.onStatus(status => {
+    btn.classList.toggle('syncing', status === 'syncing');
+  });
+}
+
+function updateSyncIcon() {
+  const btn = document.getElementById('sync-btn');
+  if (!btn) return;
+  const dot = btn.querySelector('.sync-dot');
+  if (dot) {
+    dot.style.background = sheetsSync.isConfigured ? '#22c55e' : '#64748b';
+  }
+}

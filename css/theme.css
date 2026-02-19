@@ -133,6 +133,37 @@
   background: rgba(99,102,241,.08);
 }
 
+/* ── Sync button ── */
+.sync-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.sync-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: rgba(99,102,241,.08);
+}
+.sync-btn.syncing {
+  animation: sync-spin 1s linear infinite;
+}
+@keyframes sync-spin {
+  to { transform: rotate(360deg); }
+}
+.sync-btn:disabled {
+  opacity: .5;
+  cursor: wait;
+}
+
 /* ── Global resets ── */
 *, *::before, *::after {
   box-sizing: border-box;

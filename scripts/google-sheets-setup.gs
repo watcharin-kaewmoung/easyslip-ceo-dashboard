@@ -531,3 +531,290 @@ function setupNamedRanges(ss) {
   ss.setNamedRange('cfg_categories',  cfg.getRange('A10:F15'));
   ss.setNamedRange('cfg_channels',    cfg.getRange('A18:D21'));
 }
+
+// ============================================================
+//  WEB APP API — Deploy as Web App (Anyone, Execute as Me)
+// ============================================================
+//
+//  Deploy: ▶ Deploy > New deployment > Web app
+//    Execute as: Me
+//    Who has access: Anyone
+//  Copy the URL → paste into the app's sync settings
+//
+// ============================================================
+
+/** Label→Key mappings (built from constants above) */
+function catThToKey() {
+  const m = {};
+  CATEGORIES.forEach(c => { m[c.th] = c.key; });
+  return m;
+}
+function chLabelToKey() {
+  const m = {};
+  CHANNELS.forEach(c => { m[c.label] = c.key; });
+  return m;
+}
+function subLabelToKey() {
+  const m = {};
+  for (const [catKey, def] of Object.entries(SUB_ITEMS)) {
+    m[catKey] = {};
+    def.items.forEach(i => { m[catKey][i.th] = i.key; });
+  }
+  return m;
+}
+const SIMPLE_CATS = new Set(['tax', 'contingency']);
+
+// ── GET handler ──
+
+function doGet(e) {
+  try {
+    const action = (e && e.parameter && e.parameter.action) || 'ping';
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    var result;
+
+    switch (action) {
+      case 'pull':
+        result = pullAll(ss);
+        break;
+      case 'ping':
+        result = { ok: true, ts: new Date().toISOString(), sheets: ss.getSheets().map(s => s.getName()) };
+        break;
+      default:
+        result = { ok: false, error: 'Unknown action: ' + action };
+    }
+    return jsonOut(result);
+  } catch (err) {
+    return jsonOut({ ok: false, error: err.message });
+  }
+}
+
+// ── POST handler ──
+
+function doPost(e) {
+  try {
+    var body = {};
+    if (e && e.postData && e.postData.contents) {
+      body = JSON.parse(e.postData.contents);
+    }
+    const action = body.action || '';
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    var result;
+
+    switch (action) {
+      case 'push':
+        result = pushAll(ss, body);
+        break;
+      default:
+        result = { ok: false, error: 'Unknown action: ' + action };
+    }
+    return jsonOut(result);
+  } catch (err) {
+    return jsonOut({ ok: false, error: err.message });
+  }
+}
+
+function jsonOut(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ============================================================
+//  PULL — Read all sheets → JSON
+// ============================================================
+
+function pullAll(ss) {
+  return {
+    ok: true,
+    ts: new Date().toISOString(),
+    revenue: readRevenue(ss),
+    expenses: readCostSheetData(ss, 'Expenses'),
+    costBudget: readCostSheetData(ss, 'Cost Budget'),
+    costActual: readCostActualData(ss),
+  };
+}
+
+/** Read Revenue sheet → { projection:{bot:[12],...}, budget:{...}, actual:{...} } */
+function readRevenue(ss) {
+  var sheet = ss.getSheetByName('Revenue');
+  if (!sheet) return null;
+  var data = sheet.getDataRange().getValues();
+  var chMap = chLabelToKey();
+  var result = { projection: {}, budget: {}, actual: {} };
+
+  for (var r = 1; r < data.length; r++) {
+    var type = String(data[r][0]).trim();
+    var label = String(data[r][1]).trim();
+    var chKey = chMap[label];
+    if (!chKey || !result[type]) continue;
+    result[type][chKey] = data[r].slice(2, 14).map(function(v) { return Number(v) || 0; });
+  }
+  return result;
+}
+
+/** Read Expenses or Cost Budget → { categories:{key:[12],...}, details:{key:{sub:[12],...},...} } */
+function readCostSheetData(ss, sheetName) {
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) return null;
+  var data = sheet.getDataRange().getValues();
+  var cm = catThToKey();
+  var sm = subLabelToKey();
+  var categories = {}, details = {};
+
+  for (var r = 1; r < data.length; r++) {
+    var colA = String(data[r][0]).trim();
+    var colB = String(data[r][1]).trim();
+    if (colA === 'GRAND_TOTAL' || !colA) continue;
+
+    var months = data[r].slice(2, 14).map(function(v) { return Number(v) || 0; });
+
+    if (colB === '_total') {
+      var catKey = cm[colA];
+      if (catKey) categories[catKey] = months;
+    } else {
+      // Sub-item row: colA = category key, colB = sub-item label
+      var subKey = sm[colA] && sm[colA][colB];
+      if (colA && subKey) {
+        if (!details[colA]) details[colA] = {};
+        details[colA][subKey] = months;
+      }
+    }
+  }
+  return { categories: categories, details: details };
+}
+
+/** Read Cost Actual → { system_cost:[12], salary:[12], ... } */
+function readCostActualData(ss) {
+  var sheet = ss.getSheetByName('Cost Actual');
+  if (!sheet) return null;
+  var data = sheet.getDataRange().getValues();
+  var cm = catThToKey();
+  var result = {};
+
+  for (var r = 1; r < data.length; r++) {
+    var label = String(data[r][0]).trim();
+    if (label === 'GRAND_TOTAL' || !label) continue;
+    var catKey = cm[label];
+    if (catKey) {
+      result[catKey] = data[r].slice(1, 13).map(function(v) { return Number(v) || 0; });
+    }
+  }
+  return result;
+}
+
+// ============================================================
+//  PUSH — Write JSON → sheets
+// ============================================================
+
+function pushAll(ss, body) {
+  var results = {};
+  if (body.revenue) results.revenue = writeRevenueData(ss, body.revenue);
+  if (body.expenses) results.expenses = writeCostSheetData(ss, 'Expenses', body.expenses);
+  if (body.costBudget) results.costBudget = writeCostSheetData(ss, 'Cost Budget', body.costBudget);
+  if (body.costActual) results.costActual = writeCostActualData(ss, body.costActual);
+
+  // Update timestamp in Config
+  var cfg = ss.getSheetByName('Config');
+  if (cfg) {
+    var cfgData = cfg.getDataRange().getValues();
+    for (var r = 0; r < cfgData.length; r++) {
+      if (cfgData[r][0] === 'last_updated') {
+        cfg.getRange(r + 1, 2).setValue(new Date().toISOString());
+        break;
+      }
+    }
+  }
+
+  return { ok: true, ts: new Date().toISOString(), results: results };
+}
+
+/** Write Revenue data to sheet */
+function writeRevenueData(ss, revData) {
+  var sheet = ss.getSheetByName('Revenue');
+  if (!sheet) return { ok: false, error: 'Revenue sheet not found' };
+  var data = sheet.getDataRange().getValues();
+  var chMap = chLabelToKey();
+  var written = 0;
+
+  for (var r = 1; r < data.length; r++) {
+    var type = String(data[r][0]).trim();
+    var label = String(data[r][1]).trim();
+    var chKey = chMap[label];
+    if (!chKey) continue;
+
+    var source = revData[type] && revData[type][chKey];
+    if (source && source.length === 12) {
+      sheet.getRange(r + 1, 3, 1, 12).setValues([source]);
+      written++;
+    }
+  }
+  return { ok: true, written: written };
+}
+
+/** Write Expenses or Cost Budget data to sheet */
+function writeCostSheetData(ss, sheetName, costData) {
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) return { ok: false, error: sheetName + ' not found' };
+  var data = sheet.getDataRange().getValues();
+  var cm = catThToKey();
+  var sm = subLabelToKey();
+  var written = 0;
+
+  for (var r = 1; r < data.length; r++) {
+    var colA = String(data[r][0]).trim();
+    var colB = String(data[r][1]).trim();
+    if (colA === 'GRAND_TOTAL') continue;
+
+    if (colB === '_total') {
+      // Simple category: write directly. Detailed: skip (SUM formula)
+      var catKey = cm[colA];
+      if (catKey && SIMPLE_CATS.has(catKey) && costData.categories && costData.categories[catKey]) {
+        var vals = costData.categories[catKey];
+        if (vals.length === 12) {
+          sheet.getRange(r + 1, 3, 1, 12).setValues([vals]);
+          written++;
+        }
+      }
+    } else {
+      // Sub-item row
+      var subKey = sm[colA] && sm[colA][colB];
+      if (subKey && costData.details && costData.details[colA] && costData.details[colA][subKey]) {
+        var sv = costData.details[colA][subKey];
+        if (sv.length === 12) {
+          sheet.getRange(r + 1, 3, 1, 12).setValues([sv]);
+          written++;
+        }
+      }
+    }
+  }
+  return { ok: true, written: written };
+}
+
+/** Write Cost Actual data to sheet */
+function writeCostActualData(ss, costData) {
+  var sheet = ss.getSheetByName('Cost Actual');
+  if (!sheet) return { ok: false, error: 'Cost Actual not found' };
+  var data = sheet.getDataRange().getValues();
+  var cm = catThToKey();
+  var written = 0;
+
+  for (var r = 1; r < data.length; r++) {
+    var label = String(data[r][0]).trim();
+    if (label === 'GRAND_TOTAL') continue;
+    var catKey = cm[label];
+    if (catKey && costData[catKey] && costData[catKey].length === 12) {
+      sheet.getRange(r + 1, 2, 1, 12).setValues([costData[catKey]]);
+      written++;
+    }
+  }
+  return { ok: true, written: written };
+}
+
+// ============================================================
+//  Manual test (run from editor)
+// ============================================================
+
+function testPull() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var result = pullAll(ss);
+  Logger.log(JSON.stringify(result, null, 2));
+}
