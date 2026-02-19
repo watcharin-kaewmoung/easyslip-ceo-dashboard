@@ -83,6 +83,10 @@ const dict = {
   'revenue.monthlyBreakdown': { th: 'Monthly Revenue Breakdown', en: 'Monthly Revenue Breakdown' },
   'revenue.budgetVsActual': { th: 'Revenue: Target vs Actual by Product', en: 'Revenue: Target vs Actual by Product' },
   'revenue.varianceChart': { th: 'Revenue: Target vs Actual Chart', en: 'Revenue: Target vs Actual Chart' },
+  'revenue.shareTrend': { th: 'Revenue Share Trend (%)', en: 'Revenue Share Trend (%)' },
+  'revenue.cumulativeVsTarget': { th: 'สะสมรายได้ vs เป้า', en: 'Cumulative Revenue vs Target' },
+  'revenue.profitMargin': { th: 'กำไร & Margin Trend', en: 'Profit & Margin Trend' },
+  'revenue.emergingChannels': { th: 'ช่องทางใหม่ (CRM & SMS)', en: 'Emerging Channels (CRM & SMS)' },
 
   // ── Cost Control Page ──
   'cost.totalCost': { th: 'ต้นทุนรวม', en: 'Total Cost' },

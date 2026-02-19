@@ -4,9 +4,10 @@
 // Channel cards instead of monolithic tables
 // ============================================
 
-import { REVENUE, getQuarterlyRevenue, getMoMGrowth, getChannelShare, recalcRevenue, saveRevenue, resetRevenue, getLastSavedRevenue } from '../data/revenue.js';
+import { REVENUE, getMoMGrowth, getChannelShare, recalcRevenue, saveRevenue, resetRevenue, getLastSavedRevenue } from '../data/revenue.js';
 import { BUDGET, saveBudget, recalcBudgetRevenue, getLastSavedBudget } from '../data/budget-actual.js';
-import { QUARTERS, CHANNEL_LIST } from '../data/constants.js';
+import { TOTAL_MONTHLY_COST } from '../data/expenses.js';
+import { CHANNEL_LIST } from '../data/constants.js';
 import { createChart, updateChart, destroyAllCharts } from '../components/charts.js';
 import { showToast } from '../components/toast.js';
 import { setPageTitle, formatBaht, formatBahtCompact, formatPercent, formatPercentSigned, downloadCSV, debounce, sum } from '../utils.js';
@@ -421,12 +422,16 @@ export function render(container) {
   function buildChartsTab() {
     return `
       <div class="grid grid-2" style="margin-bottom:24px">
-        <div class="card"><div class="card-header"><span class="card-title">${t('revenue.monthlyByChannel')}</span></div><div id="rev-stacked-bar" class="chart-container"></div></div>
-        <div class="card"><div class="card-header"><span class="card-title">${t('revenue.share')}</span></div><div id="rev-share-donut" class="chart-container"></div></div>
+        <div class="card"><div class="card-header"><span class="card-title">${t('revenue.monthlyByChannel')} (%)</span></div><div id="rev-stacked-pct" class="chart-container"></div></div>
+        <div class="card"><div class="card-header"><span class="card-title">${t('revenue.shareTrend')}</span></div><div id="rev-share-trend" class="chart-container"></div></div>
+      </div>
+      <div class="grid grid-2" style="margin-bottom:24px">
+        <div class="card"><div class="card-header"><span class="card-title">${t('revenue.cumulativeVsTarget')}</span></div><div id="rev-cumulative" class="chart-container"></div></div>
+        <div class="card"><div class="card-header"><span class="card-title">${t('revenue.profitMargin')}</span></div><div id="rev-profit-margin" class="chart-container"></div></div>
       </div>
       <div class="grid grid-2" style="margin-bottom:24px">
         <div class="card"><div class="card-header"><span class="card-title">${t('revenue.momGrowth')}</span></div><div id="rev-growth-lines" class="chart-container"></div></div>
-        <div class="card"><div class="card-header"><span class="card-title">${t('revenue.quarterly')}</span></div><div id="rev-quarterly-bar" class="chart-container"></div></div>
+        <div class="card"><div class="card-header"><span class="card-title">${t('revenue.emergingChannels')}</span></div><div id="rev-emerging" class="chart-container"></div></div>
       </div>
       <div class="card">
         <div class="card-header"><span class="card-title">${t('revenue.varianceChart')}</span></div>
@@ -437,42 +442,81 @@ export function render(container) {
   function initCharts() {
     const chColors = CHANNELS.map(c => c.color);
 
-    // Stacked Bar
-    createChart('rev-stacked-bar', {
-      chart: { type: 'bar', height: 340, stacked: true },
+    // 1. 100% Stacked Bar — shows channel proportion each month
+    createChart('rev-stacked-pct', {
+      chart: { type: 'bar', height: 340, stacked: true, stackType: '100%' },
       series: CHANNELS.map(ch => ({ name: ch.label, data: [...REVENUE[ch.key]] })),
       xaxis: { categories: months },
       colors: chColors,
       plotOptions: { bar: { borderRadius: 4, columnWidth: '55%' } },
-      yaxis: { labels: { formatter: v => `฿${(v/1000000).toFixed(1)}M`, style: { colors: '#94a3b8' } } },
+      yaxis: { labels: { formatter: v => `${Math.round(v)}%`, style: { colors: '#94a3b8' } } },
+      tooltip: { y: { formatter: v => formatBaht(v) } },
+      legend: { position: 'top' },
     });
 
-    // Donut
-    createChart('rev-share-donut', {
-      chart: { type: 'donut', height: 340 },
-      series: CHANNELS.map(ch => sum(REVENUE[ch.key])),
-      labels: CHANNELS.map(ch => ch.label),
+    // 2. Share Trend Area — replaces donut, shows how share changes over time
+    createChart('rev-share-trend', {
+      chart: { type: 'area', height: 340, stacked: true, stackType: '100%' },
+      series: CHANNELS.map(ch => ({ name: ch.label, data: [...REVENUE[ch.key]] })),
+      xaxis: { categories: months },
       colors: chColors,
-      plotOptions: {
-        pie: {
-          donut: {
-            size: '60%',
-            labels: {
-              show: true,
-              total: {
-                show: true,
-                label: t('th.total'),
-                color: '#94a3b8',
-                formatter: () => formatBahtCompact(REVENUE.annualTotal),
-              },
-            },
-          },
-        },
-      },
-      legend: { position: 'bottom' },
+      yaxis: { labels: { formatter: v => `${Math.round(v)}%`, style: { colors: '#94a3b8' } } },
+      fill: { type: 'gradient', gradient: { opacityFrom: 0.7, opacityTo: 0.3 } },
+      tooltip: { y: { formatter: v => formatBaht(v) } },
+      legend: { position: 'top' },
     });
 
-    // Growth Lines
+    // 3. Cumulative Revenue vs Target
+    let cumRev = 0, cumTarget = 0;
+    const cumRevData = months.map((_, i) => { cumRev += REVENUE.total[i]; return cumRev; });
+    const cumTargetData = months.map((_, i) => { cumTarget += BUDGET.revenue[i]; return cumTarget; });
+    createChart('rev-cumulative', {
+      chart: { type: 'area', height: 340 },
+      series: [
+        { name: t('card.actual'), data: cumRevData },
+        { name: t('card.target'), data: cumTargetData },
+      ],
+      xaxis: { categories: months },
+      colors: ['#22c55e', '#6366f1'],
+      stroke: { width: [3, 3], curve: 'smooth', dashArray: [0, 5] },
+      markers: { size: 4 },
+      yaxis: { labels: { formatter: v => `฿${(v / 1000000).toFixed(0)}M`, style: { colors: '#94a3b8' } } },
+      fill: { type: 'gradient', gradient: { opacityFrom: 0.3, opacityTo: 0.05 } },
+      legend: { position: 'top' },
+    });
+
+    // 4. Profit & Margin Trend (mixed bar/line)
+    const profitData = months.map((_, i) => REVENUE.total[i] - TOTAL_MONTHLY_COST[i]);
+    const marginData = months.map((_, i) => {
+      const rev = REVENUE.total[i];
+      return rev > 0 ? parseFloat(((rev - TOTAL_MONTHLY_COST[i]) / rev * 100).toFixed(1)) : 0;
+    });
+    createChart('rev-profit-margin', {
+      chart: { type: 'line', height: 340 },
+      series: [
+        { name: t('overview.netProfit'), type: 'bar', data: profitData },
+        { name: 'Margin %', type: 'line', data: marginData },
+      ],
+      xaxis: { categories: months },
+      colors: ['#22c55e', '#eab308'],
+      plotOptions: { bar: { borderRadius: 4, columnWidth: '55%' } },
+      stroke: { width: [0, 3], curve: 'smooth' },
+      markers: { size: [0, 4] },
+      yaxis: [
+        {
+          title: { text: t('overview.netProfit'), style: { color: '#94a3b8' } },
+          labels: { formatter: v => `฿${(v / 1000000).toFixed(1)}M`, style: { colors: '#94a3b8' } },
+        },
+        {
+          opposite: true,
+          title: { text: 'Margin %', style: { color: '#eab308' } },
+          labels: { formatter: v => `${v}%`, style: { colors: '#eab308' } },
+        },
+      ],
+      legend: { position: 'top' },
+    });
+
+    // 5. MoM Growth Lines
     createChart('rev-growth-lines', {
       chart: { type: 'line', height: 340 },
       series: ['api', 'crm', 'sms'].map(key => ({
@@ -486,40 +530,42 @@ export function render(container) {
       markers: { size: 4 },
     });
 
-    // Quarterly Bar
-    const quarterly = getQuarterlyRevenue();
-    createChart('rev-quarterly-bar', {
+    // 6. Emerging Channels (CRM + SMS) — focused view
+    createChart('rev-emerging', {
       chart: { type: 'bar', height: 340 },
-      series: CHANNELS.map(ch => ({ name: ch.label, data: quarterly[ch.key] })),
-      xaxis: { categories: [...QUARTERS] },
-      colors: chColors,
-      plotOptions: { bar: { borderRadius: 4, columnWidth: '60%' } },
-      yaxis: { labels: { formatter: v => `฿${(v/1000000).toFixed(1)}M`, style: { colors: '#94a3b8' } } },
+      series: [
+        { name: 'CRM', data: [...REVENUE.crm] },
+        { name: 'SMS', data: [...REVENUE.sms] },
+      ],
+      xaxis: { categories: months },
+      colors: ['#f97316', '#a855f7'],
+      plotOptions: { bar: { borderRadius: 4, columnWidth: '55%' } },
+      yaxis: { labels: { formatter: v => v >= 1000000 ? `฿${(v / 1000000).toFixed(1)}M` : `฿${(v / 1000).toFixed(0)}K`, style: { colors: '#94a3b8' } } },
+      legend: { position: 'top' },
     });
 
-    // Budget vs Actual Variance Chart
+    // 7. Simplified Budget vs Actual (3 series: Target bar, Actual bar, Variance line)
     const budgetArr = BUDGET.revenue;
     const variancePct = months.map((_, i) => {
       if (REVENUE.total[i] === 0 || budgetArr[i] === 0) return 0;
       return parseFloat(((REVENUE.total[i] - budgetArr[i]) / budgetArr[i] * 100).toFixed(1));
     });
-
     createChart('ba-variance-chart', {
       chart: { type: 'line', height: 380 },
       series: [
         { name: t('card.target'), type: 'bar', data: [...budgetArr] },
-        ...CHANNELS.map(ch => ({ name: ch.label, type: 'bar', data: [...REVENUE[ch.key]] })),
+        { name: t('card.actual'), type: 'bar', data: [...REVENUE.total] },
         { name: `${t('summary.variance')} %`, type: 'line', data: variancePct },
       ],
       xaxis: { categories: months },
-      colors: ['#6366f1', ...chColors, '#eab308'],
-      plotOptions: { bar: { borderRadius: 4, columnWidth: '70%' } },
-      stroke: { width: [0, 0, 0, 0, 0, 3], curve: 'smooth' },
-      markers: { size: [0, 0, 0, 0, 0, 4] },
+      colors: ['#6366f1', '#22c55e', '#eab308'],
+      plotOptions: { bar: { borderRadius: 4, columnWidth: '60%' } },
+      stroke: { width: [0, 0, 3], curve: 'smooth' },
+      markers: { size: [0, 0, 4] },
       yaxis: [
         {
           title: { text: t('chart.amountTHB'), style: { color: '#94a3b8' } },
-          labels: { formatter: v => `฿${(v/1000000).toFixed(1)}M`, style: { colors: '#94a3b8' } },
+          labels: { formatter: v => `฿${(v / 1000000).toFixed(1)}M`, style: { colors: '#94a3b8' } },
         },
         {
           opposite: true,
@@ -529,24 +575,61 @@ export function render(container) {
       ],
       tooltip: {
         shared: true,
-        y: { formatter: (v, { seriesIndex }) => seriesIndex === 5 ? `${v}%` : formatBaht(v) },
+        y: { formatter: (v, { seriesIndex }) => seriesIndex === 2 ? `${v}%` : formatBaht(v) },
       },
       legend: { position: 'top' },
     });
   }
 
   function updateAllCharts() {
-    updateChart('rev-stacked-bar', CHANNELS.map(ch => ({ name: ch.label, data: [...REVENUE[ch.key]] })));
-    updateChart('rev-share-donut', CHANNELS.map(ch => sum(REVENUE[ch.key])));
+    // 1 & 2. Stacked bar + share trend (same raw data, ApexCharts handles 100% calc)
+    const channelSeries = CHANNELS.map(ch => ({ name: ch.label, data: [...REVENUE[ch.key]] }));
+    updateChart('rev-stacked-pct', channelSeries);
+    updateChart('rev-share-trend', channelSeries);
 
-    const growthSeries = ['api', 'crm', 'sms'].map(key => ({
+    // 3. Cumulative
+    let cumRev = 0, cumTarget = 0;
+    const cumRevData = months.map((_, i) => { cumRev += REVENUE.total[i]; return cumRev; });
+    const cumTargetData = months.map((_, i) => { cumTarget += BUDGET.revenue[i]; return cumTarget; });
+    updateChart('rev-cumulative', [
+      { name: t('card.actual'), data: cumRevData },
+      { name: t('card.target'), data: cumTargetData },
+    ]);
+
+    // 4. Profit & Margin
+    const profitData = months.map((_, i) => REVENUE.total[i] - TOTAL_MONTHLY_COST[i]);
+    const marginData = months.map((_, i) => {
+      const rev = REVENUE.total[i];
+      return rev > 0 ? parseFloat(((rev - TOTAL_MONTHLY_COST[i]) / rev * 100).toFixed(1)) : 0;
+    });
+    updateChart('rev-profit-margin', [
+      { name: t('overview.netProfit'), type: 'bar', data: profitData },
+      { name: 'Margin %', type: 'line', data: marginData },
+    ]);
+
+    // 5. MoM Growth
+    updateChart('rev-growth-lines', ['api', 'crm', 'sms'].map(key => ({
       name: CHANNELS.find(c => c.key === key)?.label || key,
       data: getMoMGrowth(key).map(v => v != null ? parseFloat(v.toFixed(2)) : null),
-    }));
-    updateChart('rev-growth-lines', growthSeries);
+    })));
 
-    const quarterly = getQuarterlyRevenue();
-    updateChart('rev-quarterly-bar', CHANNELS.map(ch => ({ name: ch.label, data: quarterly[ch.key] })));
+    // 6. Emerging Channels
+    updateChart('rev-emerging', [
+      { name: 'CRM', data: [...REVENUE.crm] },
+      { name: 'SMS', data: [...REVENUE.sms] },
+    ]);
+
+    // 7. Budget vs Actual
+    const budgetArr = BUDGET.revenue;
+    const variancePct = months.map((_, i) => {
+      if (REVENUE.total[i] === 0 || budgetArr[i] === 0) return 0;
+      return parseFloat(((REVENUE.total[i] - budgetArr[i]) / budgetArr[i] * 100).toFixed(1));
+    });
+    updateChart('ba-variance-chart', [
+      { name: t('card.target'), type: 'bar', data: [...budgetArr] },
+      { name: t('card.actual'), type: 'bar', data: [...REVENUE.total] },
+      { name: `${t('summary.variance')} %`, type: 'line', data: variancePct },
+    ]);
   }
 
   // ── Danger Zone ──
