@@ -244,7 +244,7 @@ export function render(container) {
   // ── Revenue Tab: Channel Cards ──
 
   function buildRevenueCards() {
-    return CHANNELS.map(ch => buildRevenueChannelCard(ch)).join('');
+    return `<div class="grid grid-2">${CHANNELS.map(ch => buildRevenueChannelCard(ch)).join('')}</div>`;
   }
 
   function buildRevenueChannelCard(ch) {
@@ -257,7 +257,7 @@ export function render(container) {
     const progressPct = budgetTotal > 0 ? Math.min(revTotal / budgetTotal * 100, 100) : 0;
 
     return `
-      <div class="card" style="margin-bottom:16px;border-left:4px solid ${ch.color}">
+      <div class="card" style="border-left:4px solid ${ch.color}">
         <div class="card-header" style="padding-bottom:12px">
           <span class="card-title" style="display:flex;align-items:center;gap:8px">
             <span style="width:10px;height:10px;border-radius:50%;background:${ch.color};display:inline-block"></span>
@@ -296,7 +296,7 @@ export function render(container) {
   // ── Compare Tab ──
 
   function buildCompareCards() {
-    return buildGrandTotalCompareCard() + CHANNELS.map(ch => buildCompareChannelCard(ch)).join('');
+    return buildGrandTotalCompareCard() + `<div class="grid grid-2">${CHANNELS.map(ch => buildCompareChannelCard(ch)).join('')}</div>`;
   }
 
   function buildGrandTotalCompareCard() {
@@ -357,7 +357,7 @@ export function render(container) {
     const sharePct = share[ch.key] || 0;
 
     return `
-      <div class="card" style="margin-bottom:16px;border-left:4px solid ${ch.color}">
+      <div class="card" style="border-left:4px solid ${ch.color}">
         <div class="card-header" style="padding-bottom:12px">
           <span class="card-title" style="display:flex;align-items:center;gap:8px">
             <span style="width:10px;height:10px;border-radius:50%;background:${ch.color};display:inline-block"></span>
