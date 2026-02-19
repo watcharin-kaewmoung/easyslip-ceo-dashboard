@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Reset Expenses to Zero</title></head>
+<body style="font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#0f172a;color:#e2e8f0">
+<div style="text-align:center">
+<h2>ตั้งค่าใช้จ่ายจริงทุกช่องเป็น 0</h2>
+<p style="color:#94a3b8">เพื่อรอกรอกข้อมูลจริงภายหลัง</p>
+<button id="btn" style="padding:16px 32px;font-size:1.2rem;border-radius:8px;border:none;background:#3b82f6;color:white;cursor:pointer">กดเพื่อ Reset เป็น 0</button>
+<p id="msg" style="margin-top:16px;font-size:1rem"></p>
+</div>
+<script>
+document.getElementById('btn').addEventListener('click', function() {
+  const z = [0,0,0,0,0,0,0,0,0,0,0,0];
+  const schema = [
+    { key:'system_cost', label:{th:'ค่าระบบ (Cloud & Infra)',en:'System Cost (Cloud & Infra)'}, type:'detailed', color:'#ef4444', subItemType:'pct',
+      subItems:[
+        {key:'cloud',label:{th:'Cloud Infrastructure',en:'Cloud Infrastructure'},defaultPct:0.50},
+        {key:'server',label:{th:'API Server & Hosting',en:'API Server & Hosting'},defaultPct:0.25},
+        {key:'database',label:{th:'Database & Storage',en:'Database & Storage'},defaultPct:0.12},
+        {key:'cdn',label:{th:'CDN & Network',en:'CDN & Network'},defaultPct:0.05},
+        {key:'monitoring',label:{th:'Monitoring & Tools',en:'Monitoring & Tools'},defaultPct:0.05},
+        {key:'license',label:{th:'SaaS License',en:'SaaS License'},defaultPct:0.03},
+      ]},
+    { key:'salary', label:{th:'เงินเดือน (Payroll)',en:'Payroll'}, type:'detailed', color:'#f97316', subItemType:'fixed',
+      subItems:[
+        {key:'base',label:{th:'เงินเดือนพื้นฐาน',en:'Base Salary'},defaultAmount:140000},
+        {key:'social',label:{th:'ประกันสังคม (นายจ้าง)',en:'Social Security'},defaultAmount:7500},
+        {key:'bonus',label:{th:'โบนัส/เบี้ยเลี้ยง',en:'Bonus / Incentive'},defaultAmount:2500},
+      ]},
+    { key:'marketing', label:{th:'การตลาด (Marketing)',en:'Marketing'}, type:'detailed', color:'#3b82f6', subItemType:'pct',
+      subItems:[
+        {key:'api_growth',label:{th:'API Growth',en:'API Growth'},defaultPct:0.25},
+        {key:'crm_acq',label:{th:'CRM Acquisition',en:'CRM Acquisition'},defaultPct:0.30},
+        {key:'sms_launch',label:{th:'SMS Launch',en:'SMS Launch'},defaultPct:0.20},
+        {key:'brand',label:{th:'Brand Awareness',en:'Brand Awareness'},defaultPct:0.15},
+        {key:'mkt_reserve',label:{th:'สำรอง',en:'Reserve'},defaultPct:0.10},
+      ]},
+    { key:'tax', label:{th:'ภาษี (Tax)',en:'Tax'}, type:'simple', color:'#ec4899' },
+    { key:'contingency', label:{th:'สำรองฉุกเฉิน (Reserve)',en:'Contingency Reserve'}, type:'simple', color:'#64748b' },
+    { key:'admin', label:{th:'ค่าบริหาร (Admin & Overhead)',en:'Admin & Overhead'}, type:'detailed', color:'#06b6d4', subItemType:'fixed',
+      subItems:[
+        {key:'social_security',label:{th:'ประกันสังคม',en:'Social Security'},defaultAmount:2250},
+        {key:'accounting',label:{th:'ค่าบัญชี',en:'Accounting'},defaultAmount:5000},
+        {key:'insurance',label:{th:'ประกันภัย',en:'Insurance'},defaultAmount:3750},
+        {key:'office',label:{th:'สำนักงาน',en:'Office'},defaultAmount:8000},
+        {key:'other_admin',label:{th:'อื่นๆ',en:'Other'},defaultAmount:15000},
+      ]},
+  ];
+
+  const data = {};
+  const details = {};
+  for (const cat of schema) {
+    data[cat.key] = [...z];
+    if (cat.type === 'detailed' && cat.subItems) {
+      details[cat.key] = {};
+      for (const sub of cat.subItems) {
+        details[cat.key][sub.key] = [...z];
+      }
+    }
+  }
+
+  localStorage.setItem('easyslip_expenses_2026', JSON.stringify({
+    version: 2,
+    lastUpdated: new Date().toISOString(),
+    schema: { categories: schema },
+    data: data,
+    details: details,
+  }));
+
+  this.disabled = true;
+  this.style.opacity = '0.5';
+  document.getElementById('msg').textContent = '✅ ตั้งค่าทุกช่องเป็น 0 แล้ว! กำลังกลับไปหน้าค่าใช้จ่าย...';
+  setTimeout(function(){ window.location.href = '/index.html#/cost-management'; window.location.reload(); }, 1500);
+});
+</script>
+</body></html>
