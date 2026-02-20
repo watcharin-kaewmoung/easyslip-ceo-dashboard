@@ -29,7 +29,7 @@ const DEFAULT_BUDGET_COST_BY_CAT = Object.freeze({
   tax: Z12, contingency: Z12, admin: Z12,
 });
 
-// Build default sub-item budget details from category defaults + sub-item proportions
+// Build default sub-item budget details — always zero (clean slate)
 function buildDefaultBudgetDetails() {
   const details = {};
   for (const cat of DETAILED_CATEGORIES) {
@@ -37,11 +37,7 @@ function buildDefaultBudgetDetails() {
     if (!def) continue;
     details[cat] = {};
     for (const item of def.items) {
-      if (def.type === 'pct') {
-        details[cat][item.key] = DEFAULT_BUDGET_COST_BY_CAT[cat].map(v => Math.round(v * (item.defaultPct ?? 0)));
-      } else {
-        details[cat][item.key] = Array(12).fill(item.defaultAmount ?? 0);
-      }
+      details[cat][item.key] = new Array(12).fill(0);
     }
   }
   return details;
@@ -129,9 +125,7 @@ export function saveBudget() {
 
 // Helper: compute costDetails from category totals using default proportions
 function computeCostDetailsFromCategoryTotals() {
-  const defaults = buildDefaultBudgetDetails();
   for (const cat of DETAILED_CATEGORIES) {
-    if (!defaults[cat]) continue;
     BUDGET.costDetails[cat] = {};
     const def = SUB_ITEM_DEFS[cat];
     if (!def) continue;
@@ -139,7 +133,9 @@ function computeCostDetailsFromCategoryTotals() {
       if (def.type === 'pct') {
         BUDGET.costDetails[cat][item.key] = BUDGET.cost[cat].map(v => Math.round(v * (item.defaultPct ?? 0)));
       } else {
-        BUDGET.costDetails[cat][item.key] = Array(12).fill(item.defaultAmount ?? 0);
+        // Distribute evenly: category total / number of fixed sub-items
+        const share = def.items.length > 0 ? 1 / def.items.length : 0;
+        BUDGET.costDetails[cat][item.key] = BUDGET.cost[cat].map(v => Math.round(v * share));
       }
     }
   }
