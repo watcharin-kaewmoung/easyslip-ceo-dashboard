@@ -212,7 +212,7 @@ export function render(container) {
   // ── Budget Tab: Per-channel Target Cards ──
 
   function buildBudgetCards() {
-    return `<div class="grid grid-4">${CHANNELS.map(ch => buildBudgetChannelCard(ch)).join('')}</div>`;
+    return `<div class="grid grid-2">${CHANNELS.map(ch => buildBudgetChannelCard(ch)).join('')}</div>`;
   }
 
   function buildBudgetChannelCard(ch) {
@@ -255,7 +255,7 @@ export function render(container) {
   // ── Revenue Tab: Channel Cards ──
 
   function buildRevenueCards() {
-    return `<div class="grid grid-4">${CHANNELS.map(ch => buildRevenueChannelCard(ch)).join('')}</div>`;
+    return `<div class="grid grid-2">${CHANNELS.map(ch => buildRevenueChannelCard(ch)).join('')}</div>`;
   }
 
   function buildRevenueChannelCard(ch) {
