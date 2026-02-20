@@ -13,6 +13,7 @@ const SYNC_TS_KEY = 'sheets_last_sync';
 // ── State ──
 
 let _status = 'idle';       // idle | syncing | success | error
+let _lastError = '';
 let _listeners = [];
 
 function setStatus(s) {
@@ -80,6 +81,7 @@ export const sheetsSync = {
       return true;
     } catch (err) {
       console.error('[SheetsSync] Pull error:', err);
+      _lastError = err.message || String(err);
       setStatus('error');
       return false;
     }
@@ -100,6 +102,7 @@ export const sheetsSync = {
       return true;
     } catch (err) {
       console.error('[SheetsSync] Push error:', err);
+      _lastError = err.message || String(err);
       setStatus('error');
       return false;
     }
@@ -127,7 +130,7 @@ export const sheetsSync = {
         showToast('ดึงข้อมูลจาก Sheets สำเร็จ (push ล้มเหลว)', 'warning', 3000);
         return true;
       }
-      showToast('Sync ล้มเหลว — ตรวจสอบ URL และการ deploy', 'error', 4000);
+      showToast('Sync ล้มเหลว: ' + (_lastError || 'Unknown'), 'error', 6000);
       return false;
     }
   },
