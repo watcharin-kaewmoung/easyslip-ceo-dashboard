@@ -134,14 +134,11 @@ function setupEasySlipDatabase() {
   ss.setActiveSheet(ss.getSheetByName('Revenue'));
   SpreadsheetApp.flush();
 
-  SpreadsheetApp.getUi().alert(
-    '✅ สร้าง EasySlip Database เรียบร้อย!\n\n' +
-    '• Revenue — รายได้ (Projection / Budget / Actual)\n' +
-    '• Expenses — ค่าใช้จ่ายประมาณการ\n' +
-    '• Cost Budget — เป้าหมายต้นทุน\n' +
-    '• Cost Actual — ต้นทุนจริง\n' +
-    '• Config — ตั้งค่า & Schema'
-  );
+  try {
+    SpreadsheetApp.getUi().alert('✅ สร้าง EasySlip Database เรียบร้อย!');
+  } catch (_) {
+    Logger.log('✅ Setup complete — 5 sheets created');
+  }
 }
 
 // ============================================================
@@ -573,6 +570,9 @@ function doGet(e) {
     var result;
 
     switch (action) {
+      case 'setup':
+        result = runSetupWeb(ss);
+        break;
       case 'pull':
         result = pullAll(ss);
         break;
@@ -812,6 +812,21 @@ function writeCostActualData(ss, costData) {
 // ============================================================
 //  Manual test (run from editor)
 // ============================================================
+
+/** Web-callable setup (no UI alert) */
+function runSetupWeb(ss) {
+  ss.rename('EasySlip CEO Dashboard 2026 — Database');
+  buildRevenueSheet(getSheet(ss, 'Revenue'));
+  buildExpensesSheet(getSheet(ss, 'Expenses'));
+  buildCostBudgetSheet(getSheet(ss, 'Cost Budget'));
+  buildCostActualSheet(getSheet(ss, 'Cost Actual'));
+  buildConfigSheet(getSheet(ss, 'Config'));
+  var def = ss.getSheetByName('Sheet1') || ss.getSheetByName('แผ่นงาน1');
+  if (def && ss.getSheets().length > 1) ss.deleteSheet(def);
+  setupNamedRanges(ss);
+  SpreadsheetApp.flush();
+  return { ok: true, sheets: ss.getSheets().map(function(s) { return s.getName(); }) };
+}
 
 function testPull() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
