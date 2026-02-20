@@ -54,9 +54,9 @@ function buildDefaultSchema() {
       color: '#f97316',
       subItemType: 'fixed',
       subItems: [
-        { key: 'base',   label: { th: 'เงินเดือนพื้นฐาน', en: 'Base Salary' }, defaultAmount: 140000 },
-        { key: 'social', label: { th: 'ประกันสังคม (นายจ้าง)', en: 'Social Security' }, defaultAmount: 7500 },
-        { key: 'bonus',  label: { th: 'โบนัส/เบี้ยเลี้ยง', en: 'Bonus / Incentive' }, defaultAmount: 2500 },
+        { key: 'base',   label: { th: 'เงินเดือนพื้นฐาน', en: 'Base Salary' }, defaultAmount: 0 },
+        { key: 'social', label: { th: 'ประกันสังคม (นายจ้าง)', en: 'Social Security' }, defaultAmount: 0 },
+        { key: 'bonus',  label: { th: 'โบนัส/เบี้ยเลี้ยง', en: 'Bonus / Incentive' }, defaultAmount: 0 },
       ],
     },
     {
@@ -92,11 +92,11 @@ function buildDefaultSchema() {
       color: '#06b6d4',
       subItemType: 'fixed',
       subItems: [
-        { key: 'social_security', label: { th: 'ประกันสังคม', en: 'Social Security' }, defaultAmount: 2250 },
-        { key: 'accounting',      label: { th: 'ค่าบัญชี', en: 'Accounting' }, defaultAmount: 5000 },
-        { key: 'insurance',       label: { th: 'ประกันภัย', en: 'Insurance' }, defaultAmount: 3750 },
-        { key: 'office',          label: { th: 'สำนักงาน', en: 'Office' }, defaultAmount: 8000 },
-        { key: 'other_admin',     label: { th: 'อื่นๆ', en: 'Other' }, defaultAmount: 15000 },
+        { key: 'social_security', label: { th: 'ประกันสังคม', en: 'Social Security' }, defaultAmount: 0 },
+        { key: 'accounting',      label: { th: 'ค่าบัญชี', en: 'Accounting' }, defaultAmount: 0 },
+        { key: 'insurance',       label: { th: 'ประกันภัย', en: 'Insurance' }, defaultAmount: 0 },
+        { key: 'office',          label: { th: 'สำนักงาน', en: 'Office' }, defaultAmount: 0 },
+        { key: 'other_admin',     label: { th: 'อื่นๆ', en: 'Other' }, defaultAmount: 0 },
       ],
     },
   ];
