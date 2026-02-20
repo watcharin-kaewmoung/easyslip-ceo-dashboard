@@ -561,12 +561,15 @@ function subLabelToKey() {
 }
 const SIMPLE_CATS = new Set(['tax', 'contingency']);
 
-// ── GET handler ──
+// ── GET handler (supports JSONP to bypass CORS) ──
 
 function doGet(e) {
+  var callback = '';
   try {
-    const action = (e && e.parameter && e.parameter.action) || 'ping';
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    var p = (e && e.parameter) || {};
+    var action = p.action || 'ping';
+    callback = p.callback || '';
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
     var result;
 
     switch (action) {
@@ -576,15 +579,32 @@ function doGet(e) {
       case 'pull':
         result = pullAll(ss);
         break;
+      case 'push':
+        // Push via GET (JSONP-friendly) — data in URL parameter
+        var pushData = {};
+        if (p.data) pushData = JSON.parse(p.data);
+        pushData.action = 'push';
+        result = pushAll(ss, pushData);
+        break;
       case 'ping':
-        result = { ok: true, ts: new Date().toISOString(), sheets: ss.getSheets().map(s => s.getName()) };
+        result = { ok: true, ts: new Date().toISOString(), sheets: ss.getSheets().map(function(s) { return s.getName(); }) };
         break;
       default:
         result = { ok: false, error: 'Unknown action: ' + action };
     }
+
+    if (callback) {
+      return ContentService.createTextOutput(callback + '(' + JSON.stringify(result) + ')')
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
     return jsonOut(result);
   } catch (err) {
-    return jsonOut({ ok: false, error: err.message });
+    var errObj = { ok: false, error: err.message };
+    if (callback) {
+      return ContentService.createTextOutput(callback + '(' + JSON.stringify(errObj) + ')')
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return jsonOut(errObj);
   }
 }
 
