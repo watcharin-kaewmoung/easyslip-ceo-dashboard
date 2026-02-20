@@ -593,6 +593,10 @@ function doGet(e) {
         result = { ok: false, error: 'Unknown action: ' + action };
     }
 
+    // iframe+postMessage mode (bypasses CORS entirely)
+    if (p.pm === '1') {
+      return pmOut(result);
+    }
     if (callback) {
       return ContentService.createTextOutput(callback + '(' + JSON.stringify(result) + ')')
         .setMimeType(ContentService.MimeType.JAVASCRIPT);
@@ -600,12 +604,23 @@ function doGet(e) {
     return jsonOut(result);
   } catch (err) {
     var errObj = { ok: false, error: err.message };
-    if (callback) {
-      return ContentService.createTextOutput(callback + '(' + JSON.stringify(errObj) + ')')
+    if (e && e.parameter && e.parameter.pm === '1') {
+      return pmOut(errObj);
+    }
+    if (e && e.parameter && e.parameter.callback) {
+      return ContentService.createTextOutput(e.parameter.callback + '(' + JSON.stringify(errObj) + ')')
         .setMimeType(ContentService.MimeType.JAVASCRIPT);
     }
     return jsonOut(errObj);
   }
+}
+
+/** Return result via HtmlService + postMessage (for iframe transport) */
+function pmOut(obj) {
+  var json = JSON.stringify(obj).replace(/<\//g, '<\\/');
+  var html = '<script>window.top.postMessage({type:"easyslip_sync",payload:' + json + '},"*");<\/script>';
+  return HtmlService.createHtmlOutput(html)
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 // ── POST handler ──

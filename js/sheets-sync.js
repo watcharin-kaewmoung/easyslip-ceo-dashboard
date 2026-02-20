@@ -148,22 +148,46 @@ export const sheetsSync = {
 };
 
 // ============================================
-//  Transport — fetch with credentials:omit
-//  (prevents Google cookies from hijacking redirect)
+//  Transport — hidden iframe + postMessage
+//  (bypasses CORS entirely: iframe loads any URL,
+//   Apps Script returns HtmlService page that
+//   postMessages result to window.top)
 // ============================================
+
+function iframeFetch(url) {
+  return new Promise((resolve, reject) => {
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'display:none;width:0;height:0;border:0';
+
+    const timer = setTimeout(() => { cleanup(); reject(new Error('Timeout (30s)')); }, 30000);
+
+    function handler(event) {
+      if (event.data && event.data.type === 'easyslip_sync') {
+        cleanup();
+        resolve(event.data.payload);
+      }
+    }
+
+    function cleanup() {
+      clearTimeout(timer);
+      window.removeEventListener('message', handler);
+      if (iframe.parentNode) iframe.remove();
+    }
+
+    window.addEventListener('message', handler);
+    iframe.src = url + '&pm=1';
+    document.body.appendChild(iframe);
+  });
+}
 
 async function fetchGet(baseUrl, action) {
   const url = `${baseUrl}?action=${encodeURIComponent(action)}&t=${Date.now()}`;
-  const res = await fetch(url, { credentials: 'omit', redirect: 'follow' });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  return iframeFetch(url);
 }
 
 async function fetchPost(baseUrl, body) {
   const url = `${baseUrl}?action=push&t=${Date.now()}&data=${encodeURIComponent(JSON.stringify(body))}`;
-  const res = await fetch(url, { credentials: 'omit', redirect: 'follow' });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  return iframeFetch(url);
 }
 
 // ============================================

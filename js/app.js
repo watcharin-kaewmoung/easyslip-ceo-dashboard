@@ -5,7 +5,7 @@
 import { registerRoute, initRouter } from './router.js';
 import { initSidebar, refreshSidebar } from './components/sidebar.js';
 import { toggleLang, updateLangToggle } from './i18n.js';
-import { sheetsSync } from './sheets-sync.js?v=4';
+import { sheetsSync } from './sheets-sync.js?v=5';
 
 // ── Register all routes ──
 registerRoute('/', () => import('./pages/overview.js'));
