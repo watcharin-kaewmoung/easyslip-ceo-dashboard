@@ -43,6 +43,8 @@ const dict = {
   'overview.netMargin': { th: 'Net Margin', en: 'Net Margin' },
   'overview.target35': { th: 'Target: 35%', en: 'Target: 35%' },
   'overview.aboveTarget': { th: 'Above Target', en: 'Above Target' },
+  'overview.belowTarget': { th: 'Below Target', en: 'Below Target' },
+  'overview.noData': { th: 'ยังไม่มีข้อมูล', en: 'No data' },
   'overview.revenueTrend': { th: 'Revenue Trend (Monthly)', en: 'Revenue Trend (Monthly)' },
   'overview.expenseBreakdown': { th: 'Expense Breakdown', en: 'Expense Breakdown' },
   'overview.revenueByChannel': { th: 'Revenue by Channel', en: 'Revenue by Channel' },

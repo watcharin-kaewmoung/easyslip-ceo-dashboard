@@ -18,10 +18,10 @@ export function render(container) {
   const months = getMonths();
   const totalRev = REVENUE.annualTotal;
   const totalCost = ANNUAL_TOTAL_COST;
-  const margin = ((totalRev - totalCost) / totalRev) * 100;
-  const costRevRatio = (totalCost / totalRev) * 100;
+  const margin = totalRev > 0 ? ((totalRev - totalCost) / totalRev) * 100 : 0;
+  const costRevRatio = totalRev > 0 ? (totalCost / totalRev) * 100 : 0;
   const personnelCost = EXPENSES.salary?.reduce((a, b) => a + b, 0) ?? 0;
-  const personnelRatio = (personnelCost / totalRev) * 100;
+  const personnelRatio = totalRev > 0 ? (personnelCost / totalRev) * 100 : 0;
   const reserveMonths = getReserveMonths();
   const share = getChannelShare();
   const breakEven = getBreakEvenPoint();

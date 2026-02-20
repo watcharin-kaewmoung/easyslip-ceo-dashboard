@@ -17,7 +17,7 @@ export function render(container) {
   const totalRevenue = REVENUE.annualTotal;
   const totalCost = ANNUAL_TOTAL_COST;
   const netProfit = totalRevenue - totalCost;
-  const margin = (netProfit / totalRevenue) * 100;
+  const margin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
 
   const share = getChannelShare();
   const months = getMonths();
@@ -46,7 +46,7 @@ export function render(container) {
           value: formatBahtCompact(totalCost),
           icon: 'receipt',
           iconBg: 'var(--color-danger)',
-          subtitle: `${formatPercent(totalCost/totalRevenue*100)} ${t('overview.ofRevenue')}`,
+          subtitle: `${formatPercent(totalRevenue > 0 ? totalCost/totalRevenue*100 : 0)} ${t('overview.ofRevenue')}`,
         })}
         ${MetricCard({
           title: t('overview.netProfit'),
@@ -63,8 +63,8 @@ export function render(container) {
           icon: 'target',
           iconBg: 'var(--color-warning)',
           subtitle: t('overview.target35'),
-          change: t('overview.aboveTarget'),
-          direction: 'up',
+          change: margin >= 35 ? t('overview.aboveTarget') : (totalRevenue > 0 ? t('overview.belowTarget') : '—'),
+          direction: margin >= 35 ? 'up' : 'down',
         })}
       </div>
 
@@ -174,11 +174,12 @@ export function render(container) {
     val: EXPENSES[cat.key]?.reduce((a, b) => a + b, 0) || 0,
     color: cat.color,
   })).filter(c => c.val > 0);
+  const donutData = expCats.length > 0 ? expCats : [{ label: t('overview.noData'), val: 1, color: '#475569' }];
   createChart('overview-expense-donut', {
     chart: { type: 'donut', height: 320 },
-    series: expCats.map(c => c.val),
-    labels: expCats.map(c => c.label),
-    colors: expCats.map(c => c.color),
+    series: donutData.map(c => c.val),
+    labels: donutData.map(c => c.label),
+    colors: donutData.map(c => c.color),
     plotOptions: {
       pie: {
         donut: {
