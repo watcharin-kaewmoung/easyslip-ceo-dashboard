@@ -20,6 +20,17 @@ registerRoute('/what-if', () => import('./pages/what-if.js'));
 registerRoute('/kpi', () => import('./pages/kpi-scorecard.js'));
 registerRoute('/marketing', () => import('./pages/marketing.js'));
 
+// ── New Pages (Phase 1-3) ──
+registerRoute('/sales', () => import('./pages/sales-pipeline.js'));
+registerRoute('/customers', () => import('./pages/customers.js'));
+registerRoute('/product', () => import('./pages/product-metrics.js'));
+registerRoute('/hr', () => import('./pages/hr-people.js'));
+registerRoute('/okr', () => import('./pages/okr-goals.js'));
+registerRoute('/report', () => import('./pages/executive-report.js'));
+
+// ── API Analytics (Google Sheets) ──
+registerRoute('/api-analytics', () => import('./pages/api-analytics.js'));
+
 // ── Theme Management ──
 const THEME_KEY = 'easyslip_theme';
 

@@ -6,13 +6,33 @@ import { navigate } from '../router.js';
 import { getLang } from '../i18n.js';
 
 const NAV_ITEMS = [
+  // ── ภาพรวม ──
   { route: '/', icon: 'layout-dashboard', label: 'ภาพรวม', labelEn: 'Overview' },
+
+  // ── การเงิน ──
+  { type: 'section', label: 'การเงิน', labelEn: 'Finance' },
   { route: '/revenue', icon: 'trending-up', label: 'รายได้', labelEn: 'Revenue' },
-  { route: '/cost-management', icon: 'wallet', label: 'บริหารต้นทุน', labelEn: 'Cost Management' },
+  { route: '/cost-management', icon: 'wallet', label: 'บริหารต้นทุน', labelEn: 'Cost Mgmt' },
   { route: '/cash-flow', icon: 'banknote', label: 'กระแสเงินสด', labelEn: 'Cash Flow' },
+
+  // ── วิเคราะห์ ──
+  { type: 'section', label: 'วิเคราะห์', labelEn: 'Analytics' },
   { route: '/what-if', icon: 'sliders-horizontal', label: 'จำลองสถานการณ์', labelEn: 'What-If' },
   { route: '/kpi', icon: 'gauge', label: 'KPI', labelEn: 'KPI' },
   { route: '/marketing', icon: 'megaphone', label: 'การตลาด', labelEn: 'Marketing' },
+
+  // ── ธุรกิจ ──
+  { type: 'section', label: 'ธุรกิจ', labelEn: 'Business' },
+  { route: '/sales', icon: 'handshake', label: 'ฝ่ายขาย', labelEn: 'Sales' },
+  { route: '/customers', icon: 'users', label: 'ลูกค้า', labelEn: 'Customers' },
+  { route: '/product', icon: 'box', label: 'ผลิตภัณฑ์', labelEn: 'Product' },
+  { route: '/api-analytics', icon: 'activity', label: 'API Analytics', labelEn: 'API Analytics' },
+
+  // ── องค์กร ──
+  { type: 'section', label: 'องค์กร', labelEn: 'Organization' },
+  { route: '/hr', icon: 'building-2', label: 'บุคลากร', labelEn: 'HR & People' },
+  { route: '/okr', icon: 'target', label: 'OKR', labelEn: 'OKR & Goals' },
+  { route: '/report', icon: 'file-text', label: 'รายงาน', labelEn: 'Report' },
 ];
 
 function getNavLabel(item) {
@@ -35,13 +55,20 @@ export function initSidebar() {
 }
 
 export function refreshSidebar() {
-  // Update nav labels without full re-render (preserves active state & event listeners)
+  // Update nav link labels
   const navItems = document.querySelectorAll('#sidebar-nav .nav-item');
+  const linkItems = NAV_ITEMS.filter(item => !item.type);
   navItems.forEach((a, i) => {
-    if (NAV_ITEMS[i]) {
+    if (linkItems[i]) {
       const labelEl = a.querySelector('.nav-label');
-      if (labelEl) labelEl.textContent = getNavLabel(NAV_ITEMS[i]);
+      if (labelEl) labelEl.textContent = getNavLabel(linkItems[i]);
     }
+  });
+  // Update section labels
+  const sectionEls = document.querySelectorAll('#sidebar-nav .nav-section-label');
+  const sectionItems = NAV_ITEMS.filter(item => item.type === 'section');
+  sectionEls.forEach((el, i) => {
+    if (sectionItems[i]) el.textContent = getNavLabel(sectionItems[i]);
   });
 }
 
@@ -65,6 +92,14 @@ function renderSidebar() {
 
   const nav = document.getElementById('sidebar-nav');
   NAV_ITEMS.forEach(item => {
+    // Section header with label
+    if (item.type === 'section') {
+      const section = document.createElement('div');
+      section.className = 'nav-section';
+      section.innerHTML = `<span class="nav-section-label">${getNavLabel(item)}</span>`;
+      nav.appendChild(section);
+      return;
+    }
     const a = document.createElement('a');
     a.className = 'nav-item';
     a.setAttribute('data-route', item.route);

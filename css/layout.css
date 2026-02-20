@@ -108,6 +108,20 @@
   text-overflow: ellipsis;
 }
 
+/* Section headers in sidebar */
+.nav-section {
+  padding: 16px 14px 6px;
+  margin-top: 4px;
+}
+
+.nav-section-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
 .sidebar-footer {
   padding: 16px 20px;
   border-top: 1px solid var(--border-default);
