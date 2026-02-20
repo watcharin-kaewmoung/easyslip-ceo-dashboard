@@ -243,19 +243,36 @@ export function loadBudget() {
 }
 
 export function resetBudget() {
+  // Restore cost per category from defaults
   for (const k of getCostKeys()) {
-    if (BUDGET.cost[k]) BUDGET.cost[k].fill(0);
-    else BUDGET.cost[k] = new Array(12).fill(0);
+    const src = DEFAULT_BUDGET_COST_BY_CAT[k];
+    if (BUDGET.cost[k] && src) {
+      BUDGET.cost[k].forEach((_, i, a) => { a[i] = src[i]; });
+    } else {
+      BUDGET.cost[k] = src ? [...src] : new Array(12).fill(0);
+    }
   }
+  // Restore sub-item details from defaults
+  const defaultDetails = buildDefaultBudgetDetails();
   for (const cat of DETAILED_CATEGORIES) {
-    if (BUDGET.costDetails[cat]) {
-      for (const sub of Object.keys(BUDGET.costDetails[cat])) {
-        BUDGET.costDetails[cat][sub].fill(0);
+    if (!defaultDetails[cat]) continue;
+    if (!BUDGET.costDetails[cat]) BUDGET.costDetails[cat] = {};
+    for (const [sub, vals] of Object.entries(defaultDetails[cat])) {
+      if (BUDGET.costDetails[cat][sub]) {
+        BUDGET.costDetails[cat][sub].forEach((_, i, a) => { a[i] = vals[i]; });
+      } else {
+        BUDGET.costDetails[cat][sub] = [...vals];
       }
     }
   }
+  // Restore revenue per channel from defaults
   for (const k of PRODUCT_KEYS) {
-    if (BUDGET.revenueByChannel[k]) BUDGET.revenueByChannel[k].fill(0);
+    const src = DEFAULT_BUDGET_REVENUE_BY_CHANNEL[k];
+    if (BUDGET.revenueByChannel[k] && src) {
+      BUDGET.revenueByChannel[k].forEach((_, i, a) => { a[i] = src[i]; });
+    } else {
+      BUDGET.revenueByChannel[k] = src ? [...src] : new Array(12).fill(0);
+    }
   }
   recalcBudget();
   storage.remove(BUDGET_KEY);

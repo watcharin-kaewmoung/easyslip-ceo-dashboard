@@ -3,7 +3,7 @@
 // ============================================
 
 import { REVENUE } from './revenue.js';
-import { TOTAL_MONTHLY_COST, ANNUAL_TOTAL_COST } from './expenses.js';
+import { EXPENSES, TOTAL_MONTHLY_COST, ANNUAL_TOTAL_COST } from './expenses.js';
 
 // Estimated transaction volumes per channel (monthly)
 export const TRANSACTIONS = Object.freeze({
@@ -54,18 +54,31 @@ export function getAnnualMetrics() {
 
 // Break-even analysis
 export function getBreakEvenPoint() {
-  // Fixed costs (salary + social + accounting + office + insurance + other)
-  const fixedMonthly = 150000 + 2250 + 5000 + 8000 + 3750 + 15000; // ฿184,000/mo
-  const variableRatio = 0.2427 + 0.02; // system cost + contingency = ~26.27%
+  // Fixed costs per month: salary + admin + marketing + tax
+  const fixedPerMonth = Array.from({ length: 12 }, (_, i) =>
+    (EXPENSES.salary?.[i] || 0) +
+    (EXPENSES.admin?.[i] || 0) +
+    (EXPENSES.marketing?.[i] || 0) +
+    (EXPENSES.tax?.[i] || 0)
+  );
+  const avgFixed = fixedPerMonth.reduce((a, b) => a + b, 0) / 12;
+
+  // Variable costs: system_cost + contingency as % of revenue
+  const varTotal = ['system_cost', 'contingency'].reduce(
+    (s, k) => s + (EXPENSES[k]?.reduce((a, b) => a + b, 0) || 0), 0
+  );
+  const variableRatio = REVENUE.annualTotal > 0 ? varTotal / REVENUE.annualTotal : 0;
   const contributionMargin = 1 - variableRatio;
-  const breakEvenRevenue = fixedMonthly / contributionMargin;
+  const breakEvenRevenue = contributionMargin > 0 ? avgFixed / contributionMargin : 0;
+
   return {
-    fixedCostsMonthly: fixedMonthly,
+    fixedCostsMonthly: Math.round(avgFixed),
     variableRatio,
     contributionMargin,
     breakEvenRevenue: Math.round(breakEvenRevenue),
-    safetyMargin: REVENUE.total.map(rev =>
-      ((rev - breakEvenRevenue) / rev) * 100
-    ),
+    safetyMargin: REVENUE.total.map((rev, i) => {
+      const monthlyBE = contributionMargin > 0 ? fixedPerMonth[i] / contributionMargin : 0;
+      return rev > 0 ? ((rev - monthlyBE) / rev) * 100 : 0;
+    }),
   };
 }

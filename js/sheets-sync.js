@@ -162,7 +162,9 @@ function iframeFetch(url) {
     const timer = setTimeout(() => { cleanup(); reject(new Error('Timeout (30s)')); }, 30000);
 
     function handler(event) {
-      if (event.data && event.data.type === 'easyslip_sync') {
+      if (event.data && event.data.type === 'easyslip_sync'
+          && typeof event.origin === 'string'
+          && event.origin.includes('googleusercontent.com')) {
         cleanup();
         resolve(event.data.payload);
       }

@@ -3,7 +3,8 @@
 // ============================================
 
 import { REVENUE, getChannelShare } from '../data/revenue.js';
-import { TOTAL_MONTHLY_COST, ANNUAL_TOTAL_COST, ANOMALIES } from '../data/expenses.js';
+import { EXPENSES, TOTAL_MONTHLY_COST, ANNUAL_TOTAL_COST, ANOMALIES } from '../data/expenses.js';
+import { EXPENSE_CATEGORIES } from '../data/constants.js';
 import { MONTHS_TH } from '../data/constants.js';
 import { MetricCard, AlertCard } from '../components/cards.js';
 import { createChart, destroyAllCharts } from '../components/charts.js';
@@ -168,20 +169,17 @@ export function render(container) {
     },
   });
 
-  // ── Expense Donut ──
-  const expCats = [
-    { label: t('donut.system'), val: 16858948 },
-    { label: t('donut.salary'), val: 1800000 },
-    { label: t('donut.marketing'), val: 5000000 },
-    { label: t('donut.tax'), val: 3177000 },
-    { label: t('donut.reserve'), val: 1402409 },
-    { label: t('donut.other'), val: 711000 },
-  ];
+  // ── Expense Donut (dynamic from EXPENSES) ──
+  const expCats = EXPENSE_CATEGORIES.map(cat => ({
+    label: localized(cat, 'label'),
+    val: EXPENSES[cat.key]?.reduce((a, b) => a + b, 0) || 0,
+    color: cat.color,
+  })).filter(c => c.val > 0);
   createChart('overview-expense-donut', {
     chart: { type: 'donut', height: 320 },
     series: expCats.map(c => c.val),
     labels: expCats.map(c => c.label),
-    colors: ['#ef4444', '#f97316', '#3b82f6', '#ec4899', '#64748b', '#94a3b8'],
+    colors: expCats.map(c => c.color),
     plotOptions: {
       pie: {
         donut: {

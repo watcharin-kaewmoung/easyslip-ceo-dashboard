@@ -93,7 +93,10 @@ export function closeModal(modalEl, onClose) {
   modalEl.classList.remove('modal-active');
   modalEl.classList.add('modal-closing');
 
+  let cleaned = false;
   const cleanup = () => {
+    if (cleaned) return;
+    cleaned = true;
     if (modalEl._cleanup) modalEl._cleanup();
     modalEl.remove();
     // Restore body scroll only if no other modals

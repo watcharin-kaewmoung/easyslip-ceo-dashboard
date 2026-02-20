@@ -21,10 +21,16 @@ export function showToast(message, type = 'info', duration = 3000) {
 
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
-  toast.innerHTML = `
-    <span style="font-weight:700;font-size:1rem">${icons[type] || ''}</span>
-    <span>${message}</span>
-  `;
+
+  const iconSpan = document.createElement('span');
+  iconSpan.style.cssText = 'font-weight:700;font-size:1rem';
+  iconSpan.textContent = icons[type] || '';
+
+  const msgSpan = document.createElement('span');
+  msgSpan.textContent = message;
+
+  toast.appendChild(iconSpan);
+  toast.appendChild(msgSpan);
 
   container.appendChild(toast);
 

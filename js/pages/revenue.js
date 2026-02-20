@@ -205,7 +205,7 @@ export function render(container) {
       case 'revenue': return buildRevenueCards();
       case 'compare': return buildCompareCards();
       case 'charts': return buildChartsTab();
-      default: return buildBudgetCard();
+      default: return buildBudgetCards();
     }
   }
 

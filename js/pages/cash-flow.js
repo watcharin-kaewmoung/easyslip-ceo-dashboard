@@ -3,7 +3,8 @@
 // ============================================
 
 import {
-  OPENING_BALANCE, DEFAULT_INFLOWS, DEFAULT_OUTFLOWS, DEFAULT_NET_FLOW, DEFAULT_BALANCE,
+  OPENING_BALANCE,
+  calculateInflows, calculateOutflows, calculateNetCashFlow, calculateCumulativeBalance,
   TAX_HEAVY_MONTHS, getReserveMonths, getClosingBalance
 } from '../data/cash-flow.js';
 import { MONTHS_TH } from '../data/constants.js';
@@ -19,7 +20,13 @@ export function render(container) {
   const months = getMonths();
   const closing = getClosingBalance();
   const reserveMonths = getReserveMonths();
-  const totalNetFlow = DEFAULT_NET_FLOW.reduce((a, b) => a + b, 0);
+
+  // Compute live data (reflects user edits to revenue/expenses)
+  const INFLOWS = calculateInflows();
+  const OUTFLOWS = calculateOutflows();
+  const NET_FLOW = calculateNetCashFlow();
+  const BALANCE = calculateCumulativeBalance();
+  const totalNetFlow = NET_FLOW.reduce((a, b) => a + b, 0);
 
   container.innerHTML = `
     <div class="fade-in">
@@ -99,8 +106,8 @@ export function render(container) {
   createChart('cf-inout-bar', {
     chart: { type: 'bar', height: 340 },
     series: [
-      { name: t('chart.inflow'), data: [...DEFAULT_INFLOWS] },
-      { name: t('chart.outflow'), data: DEFAULT_OUTFLOWS.map(v => -v) },
+      { name: t('chart.inflow'), data: [...INFLOWS] },
+      { name: t('chart.outflow'), data: OUTFLOWS.map(v => -v) },
     ],
     xaxis: { categories: months },
     colors: ['#22c55e', '#ef4444'],
@@ -112,7 +119,7 @@ export function render(container) {
   // ── Cumulative Balance Line ──
   createChart('cf-balance-line', {
     chart: { type: 'area', height: 340 },
-    series: [{ name: t('chart.cashBalance'), data: [...DEFAULT_BALANCE] }],
+    series: [{ name: t('chart.cashBalance'), data: [...BALANCE] }],
     xaxis: { categories: months },
     colors: ['#6366f1'],
     fill: {
@@ -160,10 +167,10 @@ export function render(container) {
   const tableEl = document.getElementById('cf-table');
   const rows = months.map((m, i) => [
     m,
-    formatBaht(DEFAULT_INFLOWS[i]),
-    formatBaht(DEFAULT_OUTFLOWS[i]),
-    formatBaht(DEFAULT_NET_FLOW[i]),
-    formatBaht(DEFAULT_BALANCE[i]),
+    formatBaht(INFLOWS[i]),
+    formatBaht(OUTFLOWS[i]),
+    formatBaht(NET_FLOW[i]),
+    formatBaht(BALANCE[i]),
   ]);
   tableEl.innerHTML = DataTable({
     headers: [t('th.month'), t('th.inflow'), t('th.outflow'), t('th.netFlow'), t('th.balance')],
