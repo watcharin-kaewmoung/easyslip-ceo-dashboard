@@ -78,7 +78,7 @@ function renderSidebar() {
 
   sidebar.innerHTML = `
     <div class="sidebar-header">
-      <img src="assets/logo.svg" alt="EasySlip" class="sidebar-logo">
+      <img src="assets/logo.png" alt="EasySlip" class="sidebar-logo">
       <div class="sidebar-brand">
         <h1>EasySlip</h1>
         <span>CEO Dashboard 2026</span>
