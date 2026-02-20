@@ -158,6 +158,7 @@ export function getMoMGrowth(channel) {
 // Channel share
 export function getChannelShare() {
   const total = REVENUE.annualTotal;
+  if (!total) return { bot: 0, api: 0, crm: 0, sms: 0 };
   return {
     bot: (REVENUE.annualBot / total) * 100,
     api: (REVENUE.annualApi / total) * 100,

@@ -7,7 +7,6 @@ import { ANNUAL_TOTAL_COST, EXPENSES } from '../data/expenses.js';
 import { getReserveMonths } from '../data/cash-flow.js';
 import { getBreakEvenPoint, getGrossMargin } from '../data/unit-economics.js';
 import { RISK_ITEMS, AUDIT_CHECKLIST, getRiskScore } from '../data/risk-audit.js';
-import { MONTHS_TH } from '../data/constants.js';
 import { KPICard } from '../components/cards.js';
 import { createChart, destroyAllCharts } from '../components/charts.js';
 import { setPageTitle, formatPercent } from '../utils.js';
@@ -42,8 +41,8 @@ export function render(container) {
 
   const kpis = [
     { title: t('kpi.profitMargin'), value: margin.toFixed(1), target: '35', unit: '%', status: margin >= 35 ? 'good' : margin >= 25 ? 'warning' : 'danger', description: `${t('kpi.targetGe35')} — ${t('kpi.current')} ${margin.toFixed(1)}%` },
-    { title: t('kpi.costRevenueRatio'), value: costRevRatio.toFixed(1), target: '65', unit: '%', status: costRevRatio <= 65 ? 'good' : costRevRatio <= 75 ? 'warning' : 'danger', description: `${t('kpi.targetLt65')} — ${t('kpi.current')} ${costRevRatio.toFixed(1)}%` },
-    { title: t('kpi.personnelRevenue'), value: personnelRatio.toFixed(2), target: '10', unit: '%', status: personnelRatio <= 10 ? 'good' : personnelRatio <= 15 ? 'warning' : 'danger', description: `${t('kpi.targetLt10')} — ${t('kpi.current')} ${personnelRatio.toFixed(2)}%` },
+    { title: t('kpi.costRevenueRatio'), value: costRevRatio.toFixed(1), target: '65', unit: '%', status: costRevRatio <= 65 ? 'good' : costRevRatio <= 75 ? 'warning' : 'danger', description: `${t('kpi.targetLt65')} — ${t('kpi.current')} ${costRevRatio.toFixed(1)}%`, lowerIsBetter: true },
+    { title: t('kpi.personnelRevenue'), value: personnelRatio.toFixed(2), target: '10', unit: '%', status: personnelRatio <= 10 ? 'good' : personnelRatio <= 15 ? 'warning' : 'danger', description: `${t('kpi.targetLt10')} — ${t('kpi.current')} ${personnelRatio.toFixed(2)}%`, lowerIsBetter: true },
     { title: t('kpi.revenueGrowth'), value: avgMoMGrowth.toFixed(1), target: '3', unit: '%', status: avgMoMGrowth >= 3 ? 'good' : avgMoMGrowth >= 1 ? 'warning' : 'danger', description: t('kpi.avgMoMGrowth') },
     { title: t('kpi.breakEvenSafety'), value: avgSafetyMargin.toFixed(1), target: '50', unit: '%', status: avgSafetyMargin >= 50 ? 'good' : avgSafetyMargin >= 30 ? 'warning' : 'danger', description: t('kpi.distFromBE') },
     { title: t('kpi.cashReserve'), value: reserveMonths.toFixed(1), target: '6', unit: ' mo', status: reserveMonths >= 3 ? 'good' : reserveMonths >= 2 ? 'warning' : 'danger', description: t('kpi.target36months') },

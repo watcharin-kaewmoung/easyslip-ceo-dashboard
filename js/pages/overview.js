@@ -5,7 +5,6 @@
 import { REVENUE, getChannelShare } from '../data/revenue.js';
 import { EXPENSES, TOTAL_MONTHLY_COST, ANNUAL_TOTAL_COST, ANOMALIES } from '../data/expenses.js';
 import { EXPENSE_CATEGORIES } from '../data/constants.js';
-import { MONTHS_TH } from '../data/constants.js';
 import { MetricCard, AlertCard } from '../components/cards.js';
 import { createChart, destroyAllCharts } from '../components/charts.js';
 import { setPageTitle, formatBaht, formatBahtCompact, formatPercent, sum } from '../utils.js';

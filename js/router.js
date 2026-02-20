@@ -82,7 +82,7 @@ async function handleRoute() {
   }
 
   // Update active nav (resolve aliases)
-  const ROUTE_ALIASES = { '/expenses': '/cost-management', '/budget-actual': '/cost-management' };
+  const ROUTE_ALIASES = { '/expenses': '/cost-management', '/budget-actual': '/cost-management', '/cost-control': '/cost-management' };
   const activePath = ROUTE_ALIASES[path] || path;
   document.querySelectorAll('.nav-item').forEach(el => {
     const href = el.getAttribute('data-route');

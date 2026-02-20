@@ -7,7 +7,7 @@ import {
   CHANNEL_ALLOCATION, TAX_IMPACT, QUARTERLY_STRATEGY, getMarketingRevenueRatio
 } from '../data/marketing.js';
 import { REVENUE } from '../data/revenue.js';
-import { MONTHS_TH, QUARTERS } from '../data/constants.js';
+import { QUARTERS } from '../data/constants.js';
 import { MetricCard } from '../components/cards.js';
 import { createChart, destroyAllCharts } from '../components/charts.js';
 import { DataTable } from '../components/tables.js';

@@ -7,7 +7,6 @@ import {
   calculateInflows, calculateOutflows, calculateNetCashFlow, calculateCumulativeBalance,
   TAX_HEAVY_MONTHS, getReserveMonths, getClosingBalance
 } from '../data/cash-flow.js';
-import { MONTHS_TH } from '../data/constants.js';
 import { MetricCard } from '../components/cards.js';
 import { createChart, destroyAllCharts } from '../components/charts.js';
 import { DataTable } from '../components/tables.js';

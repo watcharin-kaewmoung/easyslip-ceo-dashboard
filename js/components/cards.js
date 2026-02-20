@@ -42,8 +42,9 @@ export function MetricCard({ title, value, change, direction = 'neutral', icon, 
 /**
  * KPICard — Gauge-style KPI with target
  */
-export function KPICard({ title, value, target, unit = '%', status = 'good', description }) {
-  const pct = target ? Math.min((parseFloat(value) / parseFloat(target)) * 100, 100) : 0;
+export function KPICard({ title, value, target, unit = '%', status = 'good', description, lowerIsBetter = false }) {
+  let pct = target ? Math.min((parseFloat(value) / parseFloat(target)) * 100, 100) : 0;
+  if (lowerIsBetter && target) pct = Math.max(0, Math.min(((2 * parseFloat(target) - parseFloat(value)) / parseFloat(target)) * 100, 100));
   const statusLabels = { good: 'On Track', warning: 'Warning', danger: 'Critical' };
 
   return `

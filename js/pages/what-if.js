@@ -4,7 +4,6 @@
 
 import { REVENUE } from '../data/revenue.js';
 import { EXPENSES, TOTAL_MONTHLY_COST, ANNUAL_TOTAL_COST } from '../data/expenses.js';
-import { MONTHS_TH } from '../data/constants.js';
 import { MetricCard } from '../components/cards.js';
 import { createChart, destroyAllCharts } from '../components/charts.js';
 import { setPageTitle, formatBaht, formatBahtCompact, formatPercent, formatPercentSigned, debounce } from '../utils.js';

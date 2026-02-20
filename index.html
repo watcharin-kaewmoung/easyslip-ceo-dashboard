@@ -42,6 +42,20 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
   </style>
+  <script>
+    // Immediate theme application to prevent FOUC
+    (function() {
+      var theme = localStorage.getItem('easyslip_theme') || 'dark';
+      if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
+    })();
+  </script>
+  <style>
+    /* Icon visibility based on theme — prevents flash */
+    /* Dark (default): show sun icon, hide moon */
+    :root:not([data-theme]) #theme-icon-moon { display: none !important; }
+    /* Light: show moon icon, hide sun */
+    [data-theme="light"] #theme-icon-sun { display: none !important; }
+  </style>
 </head>
 <body>
   <!-- Skip navigation for accessibility -->
@@ -71,7 +85,7 @@
             <span id="lang-label">TH</span>
           </button>
           <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
-            <i data-lucide="sun" id="theme-icon-sun" style="width:18px;height:18px;display:none"></i>
+            <i data-lucide="sun" id="theme-icon-sun" style="width:18px;height:18px"></i>
             <i data-lucide="moon" id="theme-icon-moon" style="width:18px;height:18px"></i>
           </button>
         </div>

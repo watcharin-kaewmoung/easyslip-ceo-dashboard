@@ -163,17 +163,22 @@ function initSyncButton() {
   // Update icon based on sync config
   updateSyncIcon();
 
+  // Long-press to reconfigure URL
+  let pressTimer;
+  let longPressFired = false;
+
   btn.addEventListener('click', async () => {
+    if (longPressFired) { longPressFired = false; return; }
     btn.disabled = true;
     await sheetsSync.sync();
     btn.disabled = false;
     updateSyncIcon();
   });
 
-  // Long-press to reconfigure URL
-  let pressTimer;
   btn.addEventListener('pointerdown', () => {
+    longPressFired = false;
     pressTimer = setTimeout(() => {
+      longPressFired = true;
       sheetsSync.configure();
       updateSyncIcon();
     }, 800);

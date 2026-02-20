@@ -6,6 +6,7 @@
 
 import { storage } from './storage.js';
 import { showToast } from './components/toast.js';
+import { getCategorySchema } from './data/expenses.js';
 
 const URL_KEY = 'sheets_web_app_url';
 const SYNC_TS_KEY = 'sheets_last_sync';
@@ -305,6 +306,7 @@ function applyPulledData(res) {
     const expStore = storage.get('expenses_2026') || { version: 2 };
     if (res.expenses.categories) expStore.data = res.expenses.categories;
     if (res.expenses.details) expStore.details = res.expenses.details;
+    if (!expStore.schema) expStore.schema = { categories: getCategorySchema() };
     expStore.lastUpdated = new Date().toISOString();
     storage.set('expenses_2026', expStore);
   }

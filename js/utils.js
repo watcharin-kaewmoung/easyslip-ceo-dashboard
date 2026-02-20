@@ -75,6 +75,7 @@ export function avg(arr) {
 
 export function minMax(arr) {
   const filtered = arr.filter(v => v != null && !isNaN(v));
+  if (!filtered.length) return { min: 0, max: 0 };
   return {
     min: Math.min(...filtered),
     max: Math.max(...filtered),
@@ -84,7 +85,10 @@ export function minMax(arr) {
 // ── Change / Delta ──
 
 export function calcChange(current, previous) {
-  if (!previous || previous === 0) return { abs: current, pct: 0, direction: 'neutral' };
+  if (!previous || previous === 0) {
+    const dir = current > 0 ? 'up' : current < 0 ? 'down' : 'neutral';
+    return { abs: current, pct: current !== 0 ? 100 : 0, direction: dir };
+  }
   const abs = current - previous;
   const pct = (abs / Math.abs(previous)) * 100;
   const direction = abs > 0 ? 'up' : abs < 0 ? 'down' : 'neutral';
