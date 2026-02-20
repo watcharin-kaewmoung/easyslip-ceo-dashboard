@@ -55,6 +55,7 @@ export function getClosingBalance(collectionRate = COLLECTION_RATE) {
 export function getReserveMonths(collectionRate = COLLECTION_RATE) {
   const closing = getClosingBalance(collectionRate);
   const avgMonthlyExpense = TOTAL_MONTHLY_COST.reduce((a, b) => a + b, 0) / 12;
+  if (!avgMonthlyExpense) return closing > 0 ? 99 : 0;
   return closing / avgMonthlyExpense;
 }
 

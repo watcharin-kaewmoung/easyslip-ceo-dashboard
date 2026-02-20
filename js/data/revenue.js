@@ -9,25 +9,10 @@ const STORAGE_KEY = 'revenue_2026';
 
 // ── Frozen defaults (for Reset) ──
 
-const DEFAULT_BOT = Object.freeze([
-  22000, 22000, 22500, 22500, 23000, 23000,
-  23000, 23500, 23500, 24000, 24000, 24500
-]);
-
-const DEFAULT_API = Object.freeze([
-  4800000, 4872000, 4945080, 5019256, 5094555, 5170993,
-  5248558, 5327286, 5407206, 5488314, 5570639, 5654199
-]);
-
-const DEFAULT_CRM = Object.freeze([
-  0, 0, 0, 150000, 199500, 265335,
-  352896, 469431, 624323, 830350, 1104365, 1468806
-]);
-
-const DEFAULT_SMS = Object.freeze([
-  0, 0, 0, 0, 80000, 126800,
-  200978, 318550, 504901, 800268, 1268425, 2010434
-]);
+const DEFAULT_BOT = Object.freeze([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+const DEFAULT_API = Object.freeze([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+const DEFAULT_CRM = Object.freeze([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+const DEFAULT_SMS = Object.freeze([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
 // ── Mutable working arrays ──
 

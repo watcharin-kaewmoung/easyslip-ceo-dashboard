@@ -12,36 +12,12 @@ const STORAGE_KEY = 'expenses_2026';
 
 // ── Frozen defaults (for Reset) ──
 
-const DEFAULT_SYSTEM_COST = Object.freeze([
-  1170096, 1187569, 1205325, 1259641, 1310124, 1357403,
-  1414232, 1467680, 1524143, 1583284, 1645177, 1734378
-]);
-
-const DEFAULT_SALARY = Object.freeze([
-  150000, 150000, 150000, 150000, 150000, 150000,
-  150000, 150000, 150000, 150000, 150000, 150000
-]);
-
-const DEFAULT_MARKETING = Object.freeze([
-  333333, 333333, 333334, 373333, 373333, 373334,
-  340000, 340000, 340000, 620000, 620000, 620000
-]);
-
-const DEFAULT_TAX = Object.freeze([
-  120000, 120000, 185000, 130000, 457000, 135000,
-  140000, 371000, 536000, 148000, 155000, 680000
-]);
-
-const DEFAULT_CONTINGENCY = Object.freeze([
-  96440, 97880, 99350, 103835, 107919, 111707,
-  116489, 121075, 125890, 130896, 139369, 151559
-]);
-
-// Admin = social_security(2250) + accounting(5000) + insurance(3750) + office(8000) + other(15000)
-const DEFAULT_ADMIN = Object.freeze([
-  34000, 34000, 34000, 34000, 34000, 34000,
-  34000, 34000, 34000, 34000, 34000, 34000
-]);
+const DEFAULT_SYSTEM_COST = Object.freeze([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+const DEFAULT_SALARY = Object.freeze([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+const DEFAULT_MARKETING = Object.freeze([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+const DEFAULT_TAX = Object.freeze([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+const DEFAULT_CONTINGENCY = Object.freeze([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+const DEFAULT_ADMIN = Object.freeze([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
 const DEFAULT_DATA = {
   system_cost: DEFAULT_SYSTEM_COST,

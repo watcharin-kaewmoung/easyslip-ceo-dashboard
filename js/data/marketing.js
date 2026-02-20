@@ -3,22 +3,12 @@
 // ============================================
 
 // Quarterly marketing budget
-export const QUARTERLY_BUDGET = Object.freeze([
-  1000000,  // Q1: ฿1M
-  1120000,  // Q2: ฿1.12M
-  1020000,  // Q3: ฿1.02M
-  1860000,  // Q4: ฿1.86M
-]);
+export const QUARTERLY_BUDGET = Object.freeze([0, 0, 0, 0]);
 
-export const ANNUAL_MARKETING_BUDGET = QUARTERLY_BUDGET.reduce((a, b) => a + b, 0); // ฿5M
+export const ANNUAL_MARKETING_BUDGET = 0;
 
 // Monthly breakdown (from expenses)
-export const MONTHLY_MARKETING = Object.freeze([
-  333333, 333333, 333334,  // Q1
-  373333, 373333, 373334,  // Q2
-  340000, 340000, 340000,  // Q3
-  620000, 620000, 620000,  // Q4
-]);
+export const MONTHLY_MARKETING = Object.freeze([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
 // Channel allocation percentages
 export const CHANNEL_ALLOCATION = Object.freeze({

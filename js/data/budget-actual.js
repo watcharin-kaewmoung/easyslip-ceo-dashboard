@@ -15,30 +15,18 @@ function getCostKeys() { return EXPENSE_CATEGORIES.map(c => c.key); }
 const PRODUCT_KEYS = ['bot', 'api', 'crm', 'sms'];
 
 // Budget defaults (for reset)
-const DEFAULT_BUDGET_REVENUE = Object.freeze([
-  4822000, 4894000, 4967580, 5191756, 5377055, 5585328,
-  5824454, 6140317, 6455419, 6842614, 7290804, 7858939
-]);
+const Z12 = Object.freeze([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+const DEFAULT_BUDGET_REVENUE = Z12;
 const DEFAULT_BUDGET_REVENUE_BY_CHANNEL = Object.freeze({
-  bot: Object.freeze([22000, 22000, 22500, 22500, 23000, 23000, 23000, 23500, 23500, 24000, 24000, 24500]),
-  api: Object.freeze([4800000, 4872000, 4945080, 5019256, 5094555, 5170993, 5248558, 5327286, 5407206, 5488314, 5570639, 5654199]),
-  crm: Object.freeze([0, 0, 0, 150000, 199500, 265335, 352896, 469431, 624323, 830350, 1104365, 1468806]),
-  sms: Object.freeze([0, 0, 0, 0, 80000, 126800, 200978, 318550, 504901, 800268, 1268425, 2010434]),
+  bot: Z12, api: Z12, crm: Z12, sms: Z12,
 });
 
-const DEFAULT_BUDGET_COST = Object.freeze([
-  1903869, 1922782, 2007009, 2050809, 2505376, 2060437,
-  2094721, 2383755, 2547283, 2165180, 2223546, 2884937
-]);
+const DEFAULT_BUDGET_COST = Z12;
 
-// Per-category budget cost defaults (sums to DEFAULT_BUDGET_COST per month)
+// Per-category budget cost defaults
 const DEFAULT_BUDGET_COST_BY_CAT = Object.freeze({
-  system_cost:  Object.freeze([1170096, 1187569, 1205325, 1259641, 1310124, 1357403, 1414232, 1467680, 1524143, 1583284, 1645177, 1734378]),
-  salary:       Object.freeze([150000, 150000, 150000, 150000, 150000, 150000, 150000, 150000, 150000, 150000, 150000, 150000]),
-  marketing:    Object.freeze([333333, 333333, 333334, 373333, 373333, 373334, 340000, 340000, 340000, 620000, 620000, 620000]),
-  tax:          Object.freeze([120000, 120000, 185000, 130000, 457000, 135000, 140000, 371000, 536000, 148000, 155000, 680000]),
-  contingency:  Object.freeze([96440, 97880, 99350, 103835, 107919, 111707, 116489, 121075, 125890, 130896, 139369, 151559]),
-  admin:        Object.freeze([34000, 34000, 34000, 34000, 34000, 34000, 34000, 34000, 34000, 34000, 34000, 34000]),
+  system_cost: Z12, salary: Z12, marketing: Z12,
+  tax: Z12, contingency: Z12, admin: Z12,
 });
 
 // Build default sub-item budget details from category defaults + sub-item proportions
