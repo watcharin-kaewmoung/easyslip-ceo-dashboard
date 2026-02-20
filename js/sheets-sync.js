@@ -148,61 +148,22 @@ export const sheetsSync = {
 };
 
 // ============================================
-//  JSONP transport (bypasses CORS entirely)
+//  Transport — fetch with credentials:omit
+//  (prevents Google cookies from hijacking redirect)
 // ============================================
 
-let _jsonpId = 0;
-
-/**
- * Execute a request via JSONP (dynamic <script> injection).
- * Apps Script doGet returns: callback({...})
- */
-function jsonp(url, timeoutMs = 30000) {
-  return new Promise((resolve, reject) => {
-    const cbName = '__esJsonp_' + (++_jsonpId) + '_' + Date.now();
-    const script = document.createElement('script');
-    let done = false;
-
-    const cleanup = () => {
-      done = true;
-      delete window[cbName];
-      if (script.parentNode) script.remove();
-    };
-
-    window[cbName] = (data) => {
-      if (done) return;
-      cleanup();
-      resolve(data);
-    };
-
-    script.onerror = () => {
-      if (done) return;
-      cleanup();
-      reject(new Error('Network error'));
-    };
-
-    const sep = url.includes('?') ? '&' : '?';
-    script.src = url + sep + 'callback=' + cbName;
-    document.head.appendChild(script);
-
-    setTimeout(() => {
-      if (done) return;
-      cleanup();
-      reject(new Error('Timeout (30s)'));
-    }, timeoutMs);
-  });
-}
-
-/** GET action via JSONP */
 async function fetchGet(baseUrl, action) {
   const url = `${baseUrl}?action=${encodeURIComponent(action)}&t=${Date.now()}`;
-  return jsonp(url);
+  const res = await fetch(url, { credentials: 'omit', redirect: 'follow' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
 }
 
-/** Push via GET+JSONP (data as URL parameter) */
 async function fetchPost(baseUrl, body) {
   const url = `${baseUrl}?action=push&t=${Date.now()}&data=${encodeURIComponent(JSON.stringify(body))}`;
-  return jsonp(url);
+  const res = await fetch(url, { credentials: 'omit', redirect: 'follow' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
 }
 
 // ============================================
