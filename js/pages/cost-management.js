@@ -882,22 +882,16 @@ export function render(container) {
         <div class="card-header" style="padding-bottom:12px">
           <span class="card-title" style="color:var(--color-danger, #ef4444);font-size:.9rem">${t('section.dangerZone')}</span>
         </div>
-        <div style="display:flex;gap:12px;flex-wrap:wrap">
-          <div style="flex:1;min-width:140px">
-            <button class="btn btn-danger btn-sm" id="btn-zero" style="width:100%;margin-bottom:4px">
-              <i data-lucide="eraser" style="width:14px;height:14px"></i> ${t('btn.zeroExpenses')}
-            </button>
-            <div style="font-size:.65rem;color:var(--text-muted);text-align:center">${t('section.actualExpenses')}</div>
-          </div>
-          <div style="flex:1;min-width:140px">
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+          <div style="flex:1;min-width:200px">
             <button class="btn btn-danger btn-sm" id="btn-reset-budget" style="width:100%;margin-bottom:4px">
               <i data-lucide="rotate-ccw" style="width:14px;height:14px"></i> ${t('btn.resetBudget')}
             </button>
             <div style="font-size:.65rem;color:var(--text-muted);text-align:center">${t('section.budgetTargets')}</div>
           </div>
-          <div style="flex:1;min-width:140px">
+          <div style="flex:1;min-width:200px">
             <button class="btn btn-danger btn-sm" id="btn-reset-expenses" style="width:100%;margin-bottom:4px">
-              <i data-lucide="trash-2" style="width:14px;height:14px"></i> ${t('btn.resetExpenses')}
+              <i data-lucide="eraser" style="width:14px;height:14px"></i> ${t('btn.resetExpenses')}
             </button>
             <div style="font-size:.65rem;color:var(--text-muted);text-align:center">${t('section.actualExpenses')}</div>
           </div>
@@ -1145,17 +1139,6 @@ export function render(container) {
       item.addEventListener('mouseleave', () => { item.style.background = 'none'; });
     });
 
-    // Zero All Expenses
-    container.querySelector('#btn-zero')?.addEventListener('click', () => {
-      if (!confirm(t('confirm.zeroExpenses'))) return;
-      undoBuffer = snapshotAll();
-      zeroExpenses();
-      isDirty = true;
-      renderPage();
-      autoSaveDebounced();
-      showToast(t('toast.zeroSuccess'), 'success');
-    });
-
     // Reset Budget Targets
     container.querySelector('#btn-reset-budget')?.addEventListener('click', () => {
       if (!confirm(t('confirm.resetBudgetTargets'))) return;
@@ -1166,7 +1149,7 @@ export function render(container) {
       showToast(t('budget.budgetReset'), 'success');
     });
 
-    // Reset Expenses
+    // Reset Expenses (zero all actual data)
     container.querySelector('#btn-reset-expenses')?.addEventListener('click', () => {
       if (!confirm(t('confirm.resetExpenses'))) return;
       undoBuffer = snapshotAll();
@@ -1174,7 +1157,7 @@ export function render(container) {
       isDirty = true;
       renderPage();
       autoSaveDebounced();
-      showToast(t('toast.zeroSuccess'), 'info');
+      showToast(t('toast.zeroSuccess'), 'success');
     });
 
     // Export CSV
