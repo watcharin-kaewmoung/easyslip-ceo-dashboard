@@ -25,7 +25,6 @@ const NAV_ITEMS = [
   { type: 'section', label: 'ธุรกิจ', labelEn: 'Business' },
   { route: '/sales', icon: 'handshake', label: 'ฝ่ายขาย', labelEn: 'Sales' },
   { route: '/customers', icon: 'users', label: 'ลูกค้า', labelEn: 'Customers' },
-  { route: '/product', icon: 'box', label: 'ผลิตภัณฑ์', labelEn: 'Product' },
   { route: '/api-analytics', icon: 'activity', label: 'API Analytics', labelEn: 'API Analytics' },
 
   // ── องค์กร ──

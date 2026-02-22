@@ -4,10 +4,11 @@
 // ============================================
 
 import { API_DATA, fetchAllSheets, getProductStats, getGrandTotal, hasData } from '../data/api-analytics.js';
+import { PRODUCT } from '../data/product.js';
 import { MetricCard } from '../components/cards.js';
 import { createChart, destroyAllCharts } from '../components/charts.js';
 import { setPageTitle, formatNumber, formatPercent } from '../utils.js';
-import { t, getLang } from '../i18n.js';
+import { t, getLang, getMonths } from '../i18n.js';
 import { showToast } from '../components/toast.js';
 
 let activeProduct = 'main';
@@ -202,11 +203,65 @@ function renderContent(isEn) {
     </div>
 
     <!-- Products Comparison -->
-    <div class="card">
+    <div class="card" style="margin-bottom:24px">
       <div class="card-header">
         <span class="card-title">${t('apiAnalytics.productsComparison')}</span>
       </div>
       <div id="api-comparison-chart" class="chart-container" style="min-height:300px"></div>
+    </div>
+
+    <!-- ═══ Operational Metrics ═══ -->
+    <div class="overview-section-header" style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+      <div style="width:4px;height:20px;border-radius:2px;background:#f97316"></div>
+      <h3 class="section-title" style="margin:0">${isEn ? 'Operational Metrics' : 'ตัวชี้วัดการดำเนินงาน'}</h3>
+    </div>
+    <div class="grid grid-4 stagger" style="margin-bottom:16px">
+      ${MetricCard({
+        title: t('product.uptime'),
+        value: formatPercent(PRODUCT.avgUptime, 2),
+        icon: 'shield-check',
+        iconBg: PRODUCT.avgUptime >= 99.95 ? '#22c55e' : '#eab308',
+        subtitle: 'SLA Target: 99.95%',
+      })}
+      ${MetricCard({
+        title: t('product.avgResponse'),
+        value: PRODUCT.avgResponseTime.toFixed(0) + 'ms',
+        icon: 'timer',
+        iconBg: '#f97316',
+        subtitle: isEn ? 'Avg response time' : 'เวลาตอบกลับเฉลี่ย',
+      })}
+      ${MetricCard({
+        title: t('product.errorRate'),
+        value: formatPercent(PRODUCT.avgErrorRate),
+        icon: 'alert-triangle',
+        iconBg: PRODUCT.avgErrorRate < 1 ? '#22c55e' : '#ef4444',
+        subtitle: isEn ? 'Avg error rate' : 'อัตราข้อผิดพลาดเฉลี่ย',
+      })}
+      ${MetricCard({
+        title: t('product.tickets'),
+        value: formatNumber(PRODUCT.totalTickets),
+        icon: 'headphones',
+        iconBg: '#a855f7',
+        subtitle: `${t('product.avgResolution')}: ${PRODUCT.avgResolutionTime.toFixed(1)}h`,
+      })}
+    </div>
+    <div class="grid grid-2 stagger" style="margin-bottom:16px">
+      <div class="card">
+        <div class="card-header"><span class="card-title">${t('product.uptimeChart')}</span></div>
+        <div id="ops-uptime-chart" class="chart-container" style="min-height:240px"></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">${t('product.responseChart')}</span></div>
+        <div id="ops-response-chart" class="chart-container" style="min-height:240px"></div>
+      </div>
+    </div>
+
+    <!-- Feature Adoption -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">${t('product.featureAdoption')}</span>
+      </div>
+      <div id="ops-features-chart" class="chart-container" style="min-height:260px"></div>
     </div>
   `;
 }
@@ -458,5 +513,38 @@ function renderCharts() {
         },
       },
     },
+  });
+
+  // ── Operational Charts ──
+  const months = getMonths();
+
+  createChart('ops-uptime-chart', {
+    chart: { type: 'area', height: 240 },
+    series: [{ name: 'Uptime %', data: [...PRODUCT.uptime] }],
+    xaxis: { categories: months },
+    colors: ['#22c55e'],
+    fill: { type: 'gradient', gradient: { opacityFrom: 0.4, opacityTo: 0.05 } },
+    yaxis: { min: 99.8, max: 100, labels: { formatter: v => v.toFixed(2) + '%' } },
+    tooltip: { y: { formatter: v => v.toFixed(3) + '%' } },
+  });
+
+  createChart('ops-response-chart', {
+    chart: { type: 'bar', height: 240 },
+    series: [{ name: 'Response (ms)', data: [...PRODUCT.responseTime] }],
+    xaxis: { categories: months },
+    colors: ['#f97316'],
+    plotOptions: { bar: { borderRadius: 4, columnWidth: '50%' } },
+    tooltip: { y: { formatter: v => v + 'ms' } },
+  });
+
+  createChart('ops-features-chart', {
+    chart: { type: 'bar', height: 260 },
+    series: [{ name: 'Adoption %', data: PRODUCT.features.map(f => f.adoption) }],
+    xaxis: { categories: PRODUCT.features.map(f => f.label) },
+    colors: PRODUCT.features.map(f => f.color),
+    plotOptions: { bar: { borderRadius: 6, columnWidth: '45%', distributed: true } },
+    legend: { show: false },
+    yaxis: { max: 100, labels: { formatter: v => v + '%' } },
+    tooltip: { y: { formatter: v => v + '%' } },
   });
 }

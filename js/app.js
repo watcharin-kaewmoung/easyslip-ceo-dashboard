@@ -23,7 +23,7 @@ registerRoute('/marketing', () => import('./pages/marketing.js'));
 // ── New Pages (Phase 1-3) ──
 registerRoute('/sales', () => import('./pages/sales-pipeline.js'));
 registerRoute('/customers', () => import('./pages/customers.js'));
-registerRoute('/product', () => import('./pages/product-metrics.js'));
+registerRoute('/product', () => import('./pages/api-analytics.js')); // redirect to API Analytics
 registerRoute('/hr', () => import('./pages/hr-people.js'));
 registerRoute('/okr', () => import('./pages/okr-goals.js'));
 registerRoute('/report', () => import('./pages/executive-report.js'));
