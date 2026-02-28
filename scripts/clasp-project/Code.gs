@@ -668,27 +668,39 @@ function readCategorySchemaFromAccounting(ss) {
     var data = sheet.getDataRange().getValues();
     if (data.length < 3) continue; // need header + at least 2 data rows
 
-    // Detect columns by header text
-    var headers = data[0].map(function(h) { return String(h).trim(); });
+    // Detect header row (may be row 1 or row 2 if row 1 is empty)
+    var headerRow = -1;
     var mainCol = -1, subCol = -1;
 
-    for (var c = 0; c < headers.length; c++) {
-      var h = headers[c];
-      if (h.indexOf('หมวดหมู่') >= 0 && (h.indexOf('หลัก') >= 0 || h.indexOf('(หมวดหมู่หลัก)') >= 0)) {
-        mainCol = c;
-      } else if (h.indexOf('ประเภทค่าใช้จ่าย') >= 0 || (h.indexOf('หมวดหมู่') >= 0 && h.indexOf('ย่อย') >= 0)) {
-        subCol = c;
+    for (var tryRow = 0; tryRow < Math.min(data.length, 5); tryRow++) {
+      var headers = data[tryRow].map(function(h) { return String(h).trim(); });
+      var mc = -1, sc = -1;
+
+      for (var c = 0; c < headers.length; c++) {
+        var h = headers[c];
+        if (h.indexOf('หมวดหมู่') >= 0 && (h.indexOf('หลัก') >= 0 || h.indexOf('(หมวดหมู่หลัก)') >= 0)) {
+          mc = c;
+        } else if (h.indexOf('ประเภทค่าใช้จ่าย') >= 0 || (h.indexOf('หมวดหมู่') >= 0 && h.indexOf('ย่อย') >= 0)) {
+          sc = c;
+        }
+      }
+
+      if (mc >= 0 && sc >= 0) {
+        headerRow = tryRow;
+        mainCol = mc;
+        subCol = sc;
+        break;
       }
     }
 
-    if (mainCol < 0 || subCol < 0) continue; // Not an accounting sheet
+    if (headerRow < 0) continue; // Not an accounting sheet
 
     // Extract unique main → sub hierarchy (preserving insertion order)
     var mainOrder = [];
     var mainSubs = {};  // mainLabel → [subLabel, ...]
     var seenSubs = {};  // mainLabel → { subLabel: true }
 
-    for (var r = 1; r < data.length; r++) {
+    for (var r = headerRow + 1; r < data.length; r++) {
       var mainLabel = String(data[r][mainCol]).trim();
       var subLabel = String(data[r][subCol]).trim();
       if (!mainLabel || !subLabel) continue;
