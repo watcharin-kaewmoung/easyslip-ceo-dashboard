@@ -6,7 +6,7 @@
 
 import { storage } from './storage.js';
 import { showToast } from './components/toast.js';
-import { getCategorySchema } from './data/expenses.js';
+import { getCategorySchema, applyCategorySchemaFromSheet } from './data/expenses.js';
 
 const URL_KEY = 'sheets_web_app_url';
 const SYNC_TS_KEY = 'sheets_last_sync';
@@ -132,6 +132,38 @@ export const sheetsSync = {
         return true;
       }
       showToast('Sync ล้มเหลว: ' + (_lastError || 'Unknown'), 'error', 6000);
+      return false;
+    }
+  },
+
+  /** Import only category schema from Sheets (one-shot) */
+  async importCategoriesFromSheet() {
+    if (!this.isConfigured) {
+      if (!this.configure()) return false;
+    }
+
+    setStatus('syncing');
+    showToast('กำลังดึงหมวดหมู่จาก Sheets...', 'info', 2000);
+
+    try {
+      const res = await fetchGet(this.url, 'pull');
+      if (!res.ok) throw new Error(res.error || 'Pull failed');
+
+      if (Array.isArray(res.categorySchema) && res.categorySchema.length > 0) {
+        applyCategorySchemaFromSheet(res.categorySchema);
+        setStatus('success');
+        showToast(`นำเข้าหมวดหมู่สำเร็จ (${res.categorySchema.length} หมวด)`, 'success', 3000);
+        return true;
+      } else {
+        setStatus('success');
+        showToast('ไม่พบ sheet "Categories" ใน Google Sheets — ใช้หมวดหมู่เดิม', 'warning', 4000);
+        return false;
+      }
+    } catch (err) {
+      console.error('[SheetsSync] Import categories error:', err);
+      _lastError = err.message || String(err);
+      setStatus('error');
+      showToast('นำเข้าหมวดหมู่ล้มเหลว: ' + _lastError, 'error', 6000);
       return false;
     }
   },
@@ -299,6 +331,11 @@ function applyPulledData(res) {
   if (actualChanged) {
     actualStore.lastUpdated = new Date().toISOString();
     storage.set('actual_2026', actualStore);
+  }
+
+  // ── Category Schema (must apply BEFORE expense data) ──
+  if (Array.isArray(res.categorySchema) && res.categorySchema.length > 0) {
+    applyCategorySchemaFromSheet(res.categorySchema);
   }
 
   // ── Expenses → expenses_2026 ──

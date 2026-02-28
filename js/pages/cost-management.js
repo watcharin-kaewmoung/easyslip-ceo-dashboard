@@ -25,6 +25,7 @@ import { AlertCard } from '../components/cards.js';
 import { DataTable } from '../components/tables.js';
 import { showToast } from '../components/toast.js';
 import { openModal, closeModal } from '../components/modal.js';
+import { sheetsSync } from '../sheets-sync.js';
 import { setPageTitle, formatBaht, formatBahtCompact, formatPercent, formatPercentSigned, downloadCSV, sum, debounce } from '../utils.js';
 import { t, getMonths, localized } from '../i18n.js';
 import {
@@ -209,6 +210,10 @@ export function render(container) {
                 </button>
                 <button class="overflow-item" id="btn-manage-categories" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 16px;border:none;background:none;color:var(--text-primary);cursor:pointer;font-size:.85rem;text-align:left">
                   <i data-lucide="settings" style="width:14px;height:14px"></i> ${t('modal.manageCategories')}
+                </button>
+                <div style="border-top:1px solid var(--border-default);margin:4px 0"></div>
+                <button class="overflow-item" id="btn-import-categories-sheet" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 16px;border:none;background:none;color:var(--text-primary);cursor:pointer;font-size:.85rem;text-align:left">
+                  <i data-lucide="sheet" style="width:14px;height:14px"></i> นำเข้าหมวดหมู่จาก Sheets
                 </button>
               </div>
             </div>
@@ -1212,6 +1217,14 @@ export function render(container) {
 
     // Category Manager (from overflow)
     container.querySelector('#btn-manage-categories')?.addEventListener('click', () => openCategoryManager());
+
+    // Import Categories from Sheets
+    container.querySelector('#btn-import-categories-sheet')?.addEventListener('click', async () => {
+      closeOverflowMenu();
+      if (!confirm('นำเข้าหมวดหมู่จาก Google Sheets?\n\nหมวดหมู่ที่ key ตรงกันจะเก็บข้อมูลเดิมไว้\nหมวดที่ถูกลบออกจาก Sheet จะหายไป')) return;
+      const ok = await sheetsSync.importCategoriesFromSheet();
+      if (ok) renderPage();
+    });
 
     // Main tab switching
     container.querySelector('#cm-main-tabs')?.addEventListener('click', (e) => {

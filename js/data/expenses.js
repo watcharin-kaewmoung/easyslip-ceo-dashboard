@@ -385,6 +385,70 @@ export function getCategoryColor(catKey) {
   return cat?.color || '#64748b';
 }
 
+// ── Apply category schema from Google Sheet ──
+
+export function applyCategorySchemaFromSheet(sheetCategories) {
+  if (!Array.isArray(sheetCategories) || sheetCategories.length === 0) return false;
+
+  // 1. Snapshot existing data by key
+  const oldExpenses = {};
+  for (const key of Object.keys(EXPENSES)) {
+    oldExpenses[key] = [...EXPENSES[key]];
+  }
+  const oldDetails = {};
+  for (const key of Object.keys(EXPENSE_DETAILS)) {
+    oldDetails[key] = {};
+    for (const subKey of Object.keys(EXPENSE_DETAILS[key])) {
+      oldDetails[key][subKey] = [...EXPENSE_DETAILS[key][subKey]];
+    }
+  }
+
+  // 2. Deduplicate keys (add suffix if needed)
+  const usedKeys = new Set();
+  for (const cat of sheetCategories) {
+    let key = cat.key;
+    if (usedKeys.has(key)) {
+      let suffix = 2;
+      while (usedKeys.has(key + '_' + suffix)) suffix++;
+      cat.key = key + '_' + suffix;
+    }
+    usedKeys.add(cat.key);
+  }
+
+  // 3. Replace schema
+  categorySchema = sheetCategories;
+
+  // 4. Clear and rebuild exports
+  for (const k of Object.keys(EXPENSES)) delete EXPENSES[k];
+  for (const k of Object.keys(EXPENSE_DETAILS)) delete EXPENSE_DETAILS[k];
+  rebuildExportsFromSchema();
+
+  // 5. Restore data where keys still match
+  for (const cat of categorySchema) {
+    if (oldExpenses[cat.key]) {
+      for (let i = 0; i < 12; i++) {
+        EXPENSES[cat.key][i] = oldExpenses[cat.key][i];
+      }
+    }
+    if (cat.type === 'detailed' && cat.subItems) {
+      for (const sub of cat.subItems) {
+        if (oldDetails[cat.key]?.[sub.key]) {
+          if (!EXPENSE_DETAILS[cat.key]) EXPENSE_DETAILS[cat.key] = {};
+          if (!EXPENSE_DETAILS[cat.key][sub.key]) EXPENSE_DETAILS[cat.key][sub.key] = new Array(12).fill(0);
+          for (let i = 0; i < 12; i++) {
+            EXPENSE_DETAILS[cat.key][sub.key][i] = oldDetails[cat.key][sub.key][i];
+          }
+        }
+      }
+    }
+  }
+
+  // 6. Recalc and save
+  recalcExpenses();
+  saveExpenses();
+  return true;
+}
+
 // ── Persistence (v2 format) ──
 
 export function saveExpenses() {

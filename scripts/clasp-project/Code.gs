@@ -122,6 +122,7 @@ function setupEasySlipDatabase() {
     buildCostBudgetSheet(getSheet(ss, 'Cost Budget')),
     buildCostActualSheet(getSheet(ss, 'Cost Actual')),
     buildConfigSheet(getSheet(ss, 'Config')),
+    buildCategoriesSheet(getSheet(ss, 'Categories')),
   ];
 
   // Remove default sheet
@@ -404,6 +405,55 @@ function buildCostActualSheet(sheet) {
 }
 
 // ============================================================
+//  Sheet 5½: Categories (หมวดหมู่ค่าใช้จ่าย — master from Sheet)
+// ============================================================
+
+function buildCategoriesSheet(sheet) {
+  var H = ['หมวดหลัก', 'รายการย่อย', 'label_en', 'key', 'type', 'color', 'subItemType', 'default_value'];
+  var NC = H.length;
+
+  sheet.getRange(1, 1, 1, NC).setValues([H]);
+  hdr(sheet, 1, NC);
+
+  var rows = [];
+
+  for (var i = 0; i < CATEGORIES.length; i++) {
+    var cat = CATEGORIES[i];
+    // Main category row: column A filled
+    rows.push([cat.th, '', cat.en, cat.key, cat.type, cat.color, cat.subType || '', '']);
+
+    // Sub-item rows: column A empty, column B filled
+    var sub = SUB_ITEMS[cat.key];
+    if (sub) {
+      for (var j = 0; j < sub.items.length; j++) {
+        var item = sub.items[j];
+        var defaultVal = sub.type === 'pct' ? item.pct : item.amt;
+        rows.push(['', item.th, item.en, item.key, '', '', '', defaultVal]);
+      }
+    }
+  }
+
+  if (rows.length > 0) {
+    sheet.getRange(2, 1, rows.length, NC).setValues(rows);
+  }
+
+  // Color swatches for main categories
+  var row = 2;
+  for (var i = 0; i < CATEGORIES.length; i++) {
+    sheet.getRange(row, 6).setBackground(CATEGORIES[i].color).setFontColor('#ffffff');
+    sheet.getRange(row, 1, 1, NC).setFontWeight('bold');
+    var sub = SUB_ITEMS[CATEGORIES[i].key];
+    row += 1 + (sub ? sub.items.length : 0);
+  }
+
+  // Column widths
+  colW(sheet, { 1: 220, 2: 200, 3: 200, 4: 140, 5: 80, 6: 90, 7: 100, 8: 110 });
+  sheet.setFrozenRows(1);
+
+  return sheet;
+}
+
+// ============================================================
 //  Sheet 5: Config (ตั้งค่า & Schema)
 // ============================================================
 
@@ -499,6 +549,269 @@ function buildConfigSheet(sheet) {
   colW(sheet, { 1: 200, 2: 200, 3: 200, 4: 100, 5: 120, 6: 130 });
 
   return sheet;
+}
+
+// ============================================================
+//  Read Categories Sheet → JSON schema
+// ============================================================
+
+/**
+ * Read "Categories" sheet and return array of category objects.
+ * Returns null if sheet doesn't exist (backward compatible).
+ *
+ * Row with column A filled = new main category
+ * Row with column A empty + column B filled = sub-item of last category
+ */
+function readCategorySchema(ss) {
+  var sheet = ss.getSheetByName('Categories');
+  if (!sheet) {
+    // Fallback: try reading from accounting-format sheet
+    return readCategorySchemaFromAccounting(ss);
+  }
+
+  var data = sheet.getDataRange().getValues();
+  if (data.length < 2) return null; // header only
+
+  var categories = [];
+  var currentCat = null;
+  var usedKeys = {};
+
+  for (var r = 1; r < data.length; r++) {
+    var colA = String(data[r][0]).trim();  // หมวดหลัก
+    var colB = String(data[r][1]).trim();  // รายการย่อย
+    var colC = String(data[r][2]).trim();  // label_en
+    var colD = String(data[r][3]).trim();  // key
+    var colE = String(data[r][4]).trim();  // type
+    var colF = String(data[r][5]).trim();  // color
+    var colG = String(data[r][6]).trim();  // subItemType
+    var colH = data[r][7];                 // default_value
+
+    if (colA) {
+      // ── Main category row ──
+      var catKey = colD || colA.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+      // Deduplicate keys
+      if (usedKeys[catKey]) {
+        var suffix = 2;
+        while (usedKeys[catKey + '_' + suffix]) suffix++;
+        catKey = catKey + '_' + suffix;
+      }
+      usedKeys[catKey] = true;
+
+      currentCat = {
+        key: catKey,
+        label: { th: colA, en: colC || colA },
+        type: colE || 'simple',
+        color: colF || '#64748b',
+      };
+      if (currentCat.type === 'detailed') {
+        currentCat.subItemType = colG || 'fixed';
+        currentCat.subItems = [];
+      }
+      categories.push(currentCat);
+
+    } else if (colB && currentCat && currentCat.type === 'detailed') {
+      // ── Sub-item row ──
+      var subKey = colD || colB.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+      var defaultVal = Number(colH) || 0;
+
+      var sub = {
+        key: subKey,
+        label: { th: colB, en: colC || colB },
+      };
+      if (currentCat.subItemType === 'pct') {
+        sub.defaultPct = defaultVal;
+      } else {
+        sub.defaultAmount = defaultVal;
+      }
+      currentCat.subItems.push(sub);
+    }
+  }
+
+  return categories.length > 0 ? categories : null;
+}
+
+/**
+ * Extract a slug key from Thai/English text.
+ * Tries English chars first, falls back to a stable hash.
+ */
+function textToKey(text) {
+  var en = text.replace(/[^a-zA-Z0-9\s]/g, '').trim().toLowerCase().replace(/\s+/g, '_');
+  if (en && en.length >= 2) return en;
+  // Stable hash for Thai-only text
+  var h = 0;
+  for (var i = 0; i < text.length; i++) {
+    h = ((h << 5) - h) + text.charCodeAt(i);
+    h = h & h;
+  }
+  return 'cat_' + Math.abs(h).toString(36).substring(0, 8);
+}
+
+/**
+ * Fallback: Read an accounting-format sheet and extract category hierarchy.
+ *
+ * Expected columns (by header detection):
+ *   "ประเภทค่าใช้จ่าย" or "หมวดหมู่ย่อย"  → sub-category column
+ *   "หมวดหมู่" and "หลัก"                   → main category column
+ *
+ * Returns array in the same schema as readCategorySchema(), or null.
+ */
+function readCategorySchemaFromAccounting(ss) {
+  var sheets = ss.getSheets();
+  var DEFAULT_COLORS = ['#ef4444','#f97316','#3b82f6','#8b5cf6','#ec4899','#06b6d4','#64748b','#10b981','#eab308','#6366f1'];
+
+  for (var si = 0; si < sheets.length; si++) {
+    var sheet = sheets[si];
+    var name = sheet.getName();
+    // Skip known dashboard sheets
+    if (['Revenue','Expenses','Cost Budget','Cost Actual','Config','Categories'].indexOf(name) >= 0) continue;
+
+    var data = sheet.getDataRange().getValues();
+    if (data.length < 3) continue; // need header + at least 2 data rows
+
+    // Detect columns by header text
+    var headers = data[0].map(function(h) { return String(h).trim(); });
+    var mainCol = -1, subCol = -1;
+
+    for (var c = 0; c < headers.length; c++) {
+      var h = headers[c];
+      if (h.indexOf('หมวดหมู่') >= 0 && (h.indexOf('หลัก') >= 0 || h.indexOf('(หมวดหมู่หลัก)') >= 0)) {
+        mainCol = c;
+      } else if (h.indexOf('ประเภทค่าใช้จ่าย') >= 0 || (h.indexOf('หมวดหมู่') >= 0 && h.indexOf('ย่อย') >= 0)) {
+        subCol = c;
+      }
+    }
+
+    if (mainCol < 0 || subCol < 0) continue; // Not an accounting sheet
+
+    // Extract unique main → sub hierarchy (preserving insertion order)
+    var mainOrder = [];
+    var mainSubs = {};  // mainLabel → [subLabel, ...]
+    var seenSubs = {};  // mainLabel → { subLabel: true }
+
+    for (var r = 1; r < data.length; r++) {
+      var mainLabel = String(data[r][mainCol]).trim();
+      var subLabel = String(data[r][subCol]).trim();
+      if (!mainLabel || !subLabel) continue;
+
+      if (!mainSubs[mainLabel]) {
+        mainOrder.push(mainLabel);
+        mainSubs[mainLabel] = [];
+        seenSubs[mainLabel] = {};
+      }
+      if (!seenSubs[mainLabel][subLabel]) {
+        seenSubs[mainLabel][subLabel] = true;
+        mainSubs[mainLabel].push(subLabel);
+      }
+    }
+
+    if (mainOrder.length === 0) continue;
+
+    // Build schema
+    var categories = [];
+    var usedKeys = {};
+
+    for (var mi = 0; mi < mainOrder.length; mi++) {
+      var ml = mainOrder[mi];
+      var catKey = textToKey(ml);
+      if (usedKeys[catKey]) {
+        var sfx = 2;
+        while (usedKeys[catKey + '_' + sfx]) sfx++;
+        catKey = catKey + '_' + sfx;
+      }
+      usedKeys[catKey] = true;
+
+      var cat = {
+        key: catKey,
+        label: { th: ml, en: ml },
+        type: 'detailed',
+        color: DEFAULT_COLORS[mi % DEFAULT_COLORS.length],
+        subItemType: 'fixed',
+        subItems: [],
+      };
+
+      var subs = mainSubs[ml];
+      for (var si2 = 0; si2 < subs.length; si2++) {
+        var sl = subs[si2];
+        var subKey = textToKey(sl);
+        if (usedKeys[subKey]) {
+          var sfx2 = 2;
+          while (usedKeys[subKey + '_' + sfx2]) sfx2++;
+          subKey = subKey + '_' + sfx2;
+        }
+        usedKeys[subKey] = true;
+
+        cat.subItems.push({
+          key: subKey,
+          label: { th: sl, en: sl },
+          defaultAmount: 0,
+        });
+      }
+
+      categories.push(cat);
+    }
+
+    return categories.length > 0 ? categories : null;
+  }
+
+  return null;
+}
+
+/**
+ * Auto-build a proper "Categories" sheet from an accounting-format sheet.
+ * Run this manually: it reads the accounting sheet, creates/overwrites Categories tab.
+ */
+function importCategoriesFromAccounting() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var schema = readCategorySchemaFromAccounting(ss);
+  if (!schema) {
+    try {
+      SpreadsheetApp.getUi().alert('ไม่พบ sheet ที่มีรูปแบบบัญชี (ต้องมีคอลัมน์ "หมวดหมู่หลัก" และ "ประเภทค่าใช้จ่าย")');
+    } catch (_) {
+      Logger.log('No accounting sheet found');
+    }
+    return;
+  }
+
+  // Build proper Categories sheet from extracted schema
+  var sheet = getSheet(ss, 'Categories');
+  var H = ['หมวดหลัก', 'รายการย่อย', 'label_en', 'key', 'type', 'color', 'subItemType', 'default_value'];
+  var NC = H.length;
+
+  sheet.getRange(1, 1, 1, NC).setValues([H]);
+  hdr(sheet, 1, NC);
+
+  var rows = [];
+  for (var i = 0; i < schema.length; i++) {
+    var cat = schema[i];
+    rows.push([cat.label.th, '', cat.label.en, cat.key, cat.type, cat.color, cat.subItemType || '', '']);
+    if (cat.subItems) {
+      for (var j = 0; j < cat.subItems.length; j++) {
+        var sub = cat.subItems[j];
+        rows.push(['', sub.label.th, sub.label.en, sub.key, '', '', '', sub.defaultAmount || 0]);
+      }
+    }
+  }
+
+  if (rows.length > 0) {
+    sheet.getRange(2, 1, rows.length, NC).setValues(rows);
+  }
+
+  // Style main category rows
+  var row = 2;
+  for (var i = 0; i < schema.length; i++) {
+    sheet.getRange(row, 6).setBackground(schema[i].color).setFontColor('#ffffff');
+    sheet.getRange(row, 1, 1, NC).setFontWeight('bold');
+    row += 1 + (schema[i].subItems ? schema[i].subItems.length : 0);
+  }
+
+  colW(sheet, { 1: 220, 2: 200, 3: 200, 4: 140, 5: 80, 6: 90, 7: 100, 8: 110 });
+  sheet.setFrozenRows(1);
+
+  try {
+    SpreadsheetApp.getUi().alert('สร้าง Categories จากข้อมูลบัญชีเรียบร้อย!\n\n' + schema.length + ' หมวดหลัก, ' + rows.length + ' แถว');
+  } catch (_) {
+    Logger.log('Categories created: ' + schema.length + ' categories');
+  }
 }
 
 // ============================================================
@@ -665,6 +978,7 @@ function pullAll(ss) {
     expenses: readCostSheetData(ss, 'Expenses'),
     costBudget: readCostSheetData(ss, 'Cost Budget'),
     costActual: readCostActualData(ss),
+    categorySchema: readCategorySchema(ss),
   };
 }
 
@@ -856,6 +1170,7 @@ function runSetupWeb(ss) {
   buildCostBudgetSheet(getSheet(ss, 'Cost Budget'));
   buildCostActualSheet(getSheet(ss, 'Cost Actual'));
   buildConfigSheet(getSheet(ss, 'Config'));
+  buildCategoriesSheet(getSheet(ss, 'Categories'));
   var def = ss.getSheetByName('Sheet1') || ss.getSheetByName('แผ่นงาน1');
   if (def && ss.getSheets().length > 1) ss.deleteSheet(def);
   setupNamedRanges(ss);
